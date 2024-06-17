@@ -1,0 +1,44 @@
+{
+  "name": "Llama Index OpenAI Python Demo",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+  "features": {
+    "ghcr.io/devcontainers-contrib/features/turborepo-npm:1": {},
+    "ghcr.io/devcontainers-contrib/features/typescript:2": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/azure-cli:1.2.5": {},
+    "ghcr.io/azure/azure-dev/azd:latest": {}
+  },
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md"
+      ]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-vscode.typescript-language-features",
+        "ms-azuretools.vscode-bicep",
+        "ms-azuretools.azure-dev",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.vscode-flake8",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.formatting.provider": "black",
+        "python.languageServer": "Pylance",
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  },
+  "containerEnv": {
+    "POETRY_VIRTUALENVS_CREATE": "false",
+    "PYTHONPATH": "${PYTHONPATH}:${workspaceFolder}/backend"
+  },
+  "forwardPorts": [
+    3000,
+    8000
+  ],
+  "postCreateCommand": "cd backend && poetry install && cd ../frontend && npm install"
+}
