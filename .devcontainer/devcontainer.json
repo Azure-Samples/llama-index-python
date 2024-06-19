@@ -43,11 +43,12 @@
   },
   "containerEnv": {
     "POETRY_VIRTUALENVS_CREATE": "false",
-    "PYTHONPATH": "${PYTHONPATH}:${workspaceFolder}/backend"
+    "PYTHONPATH": "${PYTHONPATH}:${workspaceFolder}/backend",
+    "NEXT_PUBLIC_CHAT_API": "https://${CODESPACE_NAME}-8000.app.github.dev/api/chat"
   },
   "forwardPorts": [
     3000,
     8000
   ],
-  "postCreateCommand": "cd backend && poetry install && cd ../frontend && npm install"
+  "postCreateCommand": "cd backend && poetry install && cd ../frontend && pnpm install"
 }
