@@ -17,6 +17,10 @@ aiostream = "^0.5.2"
 llama-index = "0.10.41"
 llama-index-core = "0.10.41"
 cachetools = "^5.3.3"
+azure-identity = "^1.16.1"
+tenacity = "8.3.0"
+llama-index-llms-azure-openai = "^0.1.8"
+llama-index-embeddings-azure-openai = "^0.1.10"
 
 [tool.poetry.dependencies.uvicorn]
 extras = [ "standard" ]
