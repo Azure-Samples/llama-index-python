@@ -9,9 +9,7 @@ load_dotenv(dotenv_path='app/.env')
 
 
 def init_settings():
-    print(os.getenv("AZURE_CONTAINER_REGISTRY_ENDPOINT"))
     model_provider = os.getenv("MODEL_PROVIDER")
-    print(model_provider)
     match model_provider:
         case "openai":
             init_openai()
