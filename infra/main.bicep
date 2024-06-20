@@ -36,7 +36,7 @@ var llamaIndexConfig = {
     dim: '1024'
     capacity: '10'
   }
-  model_provider: 'openai'
+  model_provider: 'azure-openai'
   openai_api_key: ''
   llm_temperature: '0.7'
   llm_max_tokens: '100'

@@ -3,6 +3,10 @@ from typing import Dict
 from llama_index.core.settings import Settings
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path='app/.env')
+
 
 def init_settings():
     model_provider = os.getenv("MODEL_PROVIDER")
