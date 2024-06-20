@@ -2,7 +2,7 @@
 
 name: llama-index-python
 metadata:
-    template: azd-init@1.9.3
+    template: llama-index-python
 services:
     llama-index-python:
         project: ./backend
