@@ -20,10 +20,27 @@ init_settings()
 init_observability()
 
 environment = os.getenv("ENVIRONMENT", "dev")  # Default to 'development' if not set
+code_space = os.getenv("CODESPACE_NAME") #get the name of the codespace if set
+github_api = os.getenv("NEXT_PUBLIC_CHAT_API") #get the codespaces api format 
 
 if environment == "dev":
     logger = logging.getLogger("uvicorn")
-    logger.warning("Running in development mode - allowing CORS for all origins")
+
+    if code_space and github_api:
+        logger.warning("Running in development mode and code spaces - allowing CORS for github codespaces origins")
+        origin_8000 = github_api.replace("/api/chat","")
+        origin_8000 = origin_8000.replace("${CODESPACE_NAME}", f"{code_space}")
+        origin_3000 = origin_8000.replace("8000", "3000")
+        
+        origins = ["http://localhost:3000",
+        "http://localhost:8000",
+        origin_8000,
+        origin_3000
+        ]
+    else:
+        logger.warning("Running in development mode - allowing CORS for all origins")
+        origins = ["*"]
+    
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
