@@ -31,19 +31,14 @@ if environment == "dev":
         origin_8000 = github_api.replace("/api/chat","")
         origin_8000 = origin_8000.replace("${CODESPACE_NAME}", f"{code_space}")
         origin_3000 = origin_8000.replace("8000", "3000")
-        
-        origins = ["http://localhost:3000",
-        "http://localhost:8000",
-        origin_8000,
-        origin_3000
-        ]
+        origins = [origin_8000, origin_3000]
     else:
         logger.warning("Running in development mode - allowing CORS for all origins")
         origins = ["*"]
-    
+                   
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
