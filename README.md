@@ -26,7 +26,7 @@ This sample shows how to quickly get started with [LlamaIndex.ai](https://www.ll
 
 ## Features
 
-This project demonstrates how to build a simple LlamaIndex application using Azure OpenAI. The app is set up as a chat interface that can answer questions about your data. You can add arbitrary data sources to your chat, like local files, websites, or data retrieved from a database. The app will ingest any supported files you put in `./data/` directory. This sample app uses LlamaIndex.TS that is able to ingest any PDF, text, CSV, Markdown, Word and HTML files.
+This project demonstrates how to build a simple LlamaIndex application using Azure OpenAI. The app is set up as a chat interface that can answer questions about your data. You can add arbitrary data sources to your chat, like local files, websites, or data retrieved from a database. The app will ingest any supported files you put in `./data/` directory. This sample app includes an example pdf in the data folder that contains information about standards for sending letters, cards, flats, and parcels in the mail. The app also uses LlamaIndex.TS that is able to ingest any PDF, text, CSV, Markdown, Word and HTML files. 
 
 ## Architecture Diagram
 
@@ -39,7 +39,7 @@ This project demonstrates how to build a simple LlamaIndex application using Azu
   1. A Python backend built using FastAPI 
   2. A Javascript frontend built with Next.js 
 
-  It is hosted on [Azure Container Apps](https://learn.microsoft.com/azure/container-apps/) in just a few commands. It also uses [LlamaIndex.TS](https://github.com/run-llama/LlamaIndexTS), a TypeScript library that can ingest any PDF, text, CSV, Markdown, Word and HTML files.
+  It is hosted on [Azure Container Apps](https://learn.microsoft.com/azure/container-apps/) in just a few commands. 
 
 - The app uses [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/overview) to answer questions about the data you provide. The app is set up to use the `gpt-35-turbo` model and embeddings to provide the best and fastest answers to your questions.
 
@@ -49,7 +49,7 @@ You have a few options for getting started with this template. The quickest way 
 
 This template uses `gpt-35-turbo` version `1106`  which may not be available in all Azure regions. Check for [up-to-date region availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models#standard-deployment-model-availability) and select a region during deployment accordingly
 
-  * We recommend using `swedencentral`
+  * We recommend using `swedencentral`.
 
 ### GitHub Codespaces
 
@@ -69,32 +69,58 @@ You can run this template virtually by using GitHub Codespaces. The button will 
      azd up
     ```
    
-  Once your deployment is complete, you should see a `.env` file in the `.azure\env_name` folder. This file contains the environment variables needed to run the   application using Azure resources. Move this file to the `backend\app` folder for the variables to be loaded into the correct enivornment. 
+  Once your deployment is complete you can begin to set up your python environment. 
     
 5. Create a python virtual environment and install the python dependencies:
 
     ```bash
      cd backend 
      python3 -m venv .venv
-     source ./venv/bin/activate
+     source .venv/bin/activate
      poetry install
     ```
 
-6. Install the frontend dependencies:
+    You will also need to ensure the environment variables are accessible. You can do this by running the following command: 
+    
+    ```bash
+    azd env get-values > .env
+    ```
+    Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
+
+6. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
+
+  ```bash
+  poetry run generate
+  ```
+
+7. Next, we can install the frontend dependencies:
 
     ```bash
-     cd ..
-     cd frontend 
+     cd ../frontend
      npm install
     ```
 
-To start the web app, run the following command:
+The app is now ready to run! To test it, run the following commands:
+
+1. First start the Flask server
+```bash
+cd ../backend
+python main.py
+```
+
+Because the flask server and the frontend web app server are running on different ports, you will need to
+use public ports. To do this look for the `ports` tab at the top of your terminal in vscode, look for port 8000, 
+right click on it, select Port Visibility and set it to public. Do the same for port 3000. 
+
+2. Next open a **new terminal** and launch the web app
 
 ```bash
+cd frontend
 npm run dev
 ```
 
 Open the URL `http://localhost:3000` in your browser to interact with the bot.
+An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
 
 ### VS Code Dev Containers
 
@@ -126,26 +152,49 @@ A related option is VS Code Dev Containers, which will open the project in your 
      poetry install
     ```
 
-7. Install the frontend dependencies:
+    You will also need to ensure the environment variables are accessible. You can do this by running the following command: 
+    
+    ```bash
+    azd env get-values > .env
+    ```
+    Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
+
+7. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
+
+  ```bash
+  poetry run generate
+
+8. Install the frontend dependencies:
 
     ```bash
      cd ..
      cd frontend 
      npm install
     ```
-8. Configure a CI/CD pipeline:
+9. Configure a CI/CD pipeline:
 
     ```shell
     azd pipeline config
     ```
 
-To start the web app, run the following command:
+The app is now ready to run! To test it, run the following commands:
+
+1. First run the Flask development server
+```bash
+cd ../backend
+python main.py
+```
+
+2. Next open a **new terminal** and launch the web app
 
 ```bash
+cd frontend
 npm run dev
 ```
 
 Open the URL `http://localhost:3000` in your browser to interact with the bot.
+An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
+
 
 ### Local Environment
 
@@ -208,23 +257,41 @@ Then you can get the project code:
     ```shell
     azd up
     ```
-    Once your deployment is complete, you should see a `.env` file in the `.azure\env_name` folder. This file contains the environment variables needed to run       the application using Azure resources. Move this file to the `backend\app` folder for the variables to be loaded into the correct enivornment. 
-6. Configure a CI/CD pipeline:
+    You will also need to ensure the environment variables are accessible. You can do this by running the following command: 
+    
+    ```bash
+    azd env get-values > .env
+    ```
+    Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
+
+6. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
+
+  ```bash
+  poetry run generate
+    ```
+7. Configure a CI/CD pipeline:
 
     ```shell
     azd pipeline config
     ```
 
-#### Local Development
+The app is now ready to run! To test it, run the following commands:
 
-To run the sample, run the following commands, which will start the Next.js app.
+1. First run the Flask development server
+```bash
+cd ../backend
+python main.py
+```
 
-1. Open a terminal and navigate to the root of the project, then run app:
+2. Next open a **new terminal** and launch the web app
 
-    ```bash
-     npm run dev
+```bash
+cd frontend
+npm run dev
+```
 
-Open the URL `http://localhost:3000` in your browser to interact with the Assistant.
+Open the URL `http://localhost:3000` in your browser to interact with the bot.
+An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
 
 ## Guidance
 

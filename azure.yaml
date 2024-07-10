@@ -13,4 +13,7 @@ services:
             shell: sh
             continueOnError: false
             interactive: false
-            run: poetry install
+            run: cd ../frontend; pnpm install
+
+
+            
