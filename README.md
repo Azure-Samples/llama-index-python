@@ -47,9 +47,7 @@ This project demonstrates how to build a simple LlamaIndex application using Azu
 
 You have a few options for getting started with this template. The quickest way to get started is [GitHub Codespaces](#github-codespaces), since it will setup all the tools for you, but you can also [set it up locally](#local-environment). You can also use a [VS Code dev container](#vs-code-dev-containers)
 
-This template uses `gpt-35-turbo` version `1106`  which may not be available in all Azure regions. Check for [up-to-date region availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models#standard-deployment-model-availability) and select a region during deployment accordingly
-
-  * We recommend using `swedencentral`.
+This template uses `gpt-35-turbo` version `1106`  which may not be available in all Azure regions. Check for [up-to-date region availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models#standard-deployment-model-availability) and select a region during deployment accordingly. We recommend using `swedencentral`.
 
 ### GitHub Codespaces
 
@@ -69,7 +67,7 @@ You can run this template virtually by using GitHub Codespaces. The button will 
      azd up
     ```
    
-  Once your deployment is complete you can begin to set up your python environment. 
+    Once your deployment is complete you can begin to set up your python environment. 
     
 5. Create a python virtual environment and install the python dependencies:
 
@@ -89,9 +87,9 @@ You can run this template virtually by using GitHub Codespaces. The button will 
 
 6. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
 
-  ```bash
-  poetry run generate
-  ```
+    ```bash
+    poetry run generate
+    ```
 
 7. Next, we can install the frontend dependencies:
 
@@ -100,27 +98,31 @@ You can run this template virtually by using GitHub Codespaces. The button will 
      npm install
     ```
 
-The app is now ready to run! To test it, run the following commands:
+
+✅ The app is now ready to run! To test it, run the following commands:
 
 1. First start the Flask server
-```bash
-cd ../backend
-python main.py
-```
+  ```bash
+  cd ../backend
+  python main.py
+  ```
+If you see a Traceloop error ignore it as we will not be using it for this example. 
 
-Because the flask server and the frontend web app server are running on different ports, you will need to
-use public ports. To do this look for the `ports` tab at the top of your terminal in vscode, look for port 8000, 
+> [!IMPORTANT] 
+>  Because the Flask server and the frontend web app server are running on different ports, **you will need to
+use public ports.** To do this look for the `ports` tab at the top of your terminal in vscode, look for port 8000, 
 right click on it, select Port Visibility and set it to public. Do the same for port 3000. 
 
 2. Next open a **new terminal** and launch the web app
 
-```bash
-cd frontend
-npm run dev
-```
+  ```bash
+  cd frontend
+  npm run dev
+  ```
 
 Open the URL `http://localhost:3000` in your browser to interact with the bot.
-An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
+
+Congratulations! Your RAG app is now working. An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
 
 ### VS Code Dev Containers
 
@@ -160,9 +162,10 @@ A related option is VS Code Dev Containers, which will open the project in your 
     Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
 
 7. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
-
-  ```bash
-  poetry run generate
+  
+    ```bash
+    poetry run generate
+    ```
 
 8. Install the frontend dependencies:
 
@@ -219,7 +222,7 @@ Then you can get the project code:
 2. On your forked repository, select the **Code** button, then the **Local** tab, and copy the URL of your forked repository.
 3. Open a terminal and run this command to clone the repo: <code> git clone &lt;your-repo-url&gt; </code>
 
-#### Quickstart (with Azure OpenAI models)
+#### Using the template locally
 
 1. Bring down the template code:
 
@@ -266,8 +269,8 @@ Then you can get the project code:
 
 6. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
 
-  ```bash
-  poetry run generate
+    ```bash
+    poetry run generate
     ```
 7. Configure a CI/CD pipeline:
 
@@ -278,17 +281,17 @@ Then you can get the project code:
 The app is now ready to run! To test it, run the following commands:
 
 1. First run the Flask development server
-```bash
-cd ../backend
-python main.py
-```
+  ```bash
+  cd ../backend
+  python main.py
+  ```
 
 2. Next open a **new terminal** and launch the web app
 
-```bash
-cd frontend
-npm run dev
-```
+  ```bash
+  cd frontend
+  npm run dev
+  ```
 
 Open the URL `http://localhost:3000` in your browser to interact with the bot.
 An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
