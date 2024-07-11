@@ -73,8 +73,8 @@ You can run this template virtually by using GitHub Codespaces. The button will 
 
     ```bash
      cd backend 
-     python3 -m venv .venv
-     source .venv/bin/activate
+     python3 -m venv venv
+     source venv/bin/activate
      poetry install
     ```
 
@@ -152,8 +152,8 @@ A related option is VS Code Dev Containers, which will open the project in your 
 
     ```bash
      cd backend 
-     python3 -m venv .venv
-     source ./venv/bin/activate
+     python3 -m venv venv
+     source venv/bin/activate
      poetry install
     ```
 
@@ -245,8 +245,8 @@ Then you can get the project code:
 
     ```bash
      cd backend 
-     python3 -m venv .venv
-     source ./venv/bin/activate
+     python3 -m venv venv
+     source venv/bin/activate
      poetry install
     ```
 
