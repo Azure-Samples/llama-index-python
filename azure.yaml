@@ -13,7 +13,7 @@ services:
             shell: sh
             continueOnError: false
             interactive: false
-            run: cd ../frontend; pnpm install
+            run: poetry install; cd ../frontend; pnpm install
 
 
             
