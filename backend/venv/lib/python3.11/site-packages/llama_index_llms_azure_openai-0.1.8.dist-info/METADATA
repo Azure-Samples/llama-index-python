@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: llama-index-llms-azure-openai
+Version: 0.1.8
+Summary: llama-index llms azure openai integration
+License: MIT
+Author: Your Name
+Author-email: you@example.com
+Requires-Python: >=3.8.1,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Dist: azure-identity (>=1.15.0,<2.0.0)
+Requires-Dist: httpx
+Requires-Dist: llama-index-core (>=0.10.11.post1,<0.11.0)
+Requires-Dist: llama-index-llms-openai (>=0.1.1,<0.2.0)
+Description-Content-Type: text/markdown
+
+# LlamaIndex Llms Integration: Azure Openai
+

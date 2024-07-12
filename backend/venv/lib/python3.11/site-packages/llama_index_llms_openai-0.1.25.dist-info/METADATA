@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: llama-index-llms-openai
+Version: 0.1.25
+Summary: llama-index llms openai integration
+License: MIT
+Author: llama-index
+Requires-Python: >=3.8.1,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Dist: llama-index-core (>=0.10.24,<0.11.0)
+Description-Content-Type: text/markdown
+
+# LlamaIndex Llms Integration: Openai
+
