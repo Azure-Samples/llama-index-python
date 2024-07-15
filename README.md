@@ -99,7 +99,7 @@ You can run this template virtually by using GitHub Codespaces. The button will 
     ```
 
 
-✅ The app is now ready to run! To test it, run the following commands:
+The app is now ready to run! To test it, run the following commands:
 
 1. First start the Flask server
   ```bash
@@ -108,15 +108,16 @@ You can run this template virtually by using GitHub Codespaces. The button will 
   ```
   (If you see a Traceloop error ignore it as we will not be using it for this example.)
 
-> [!IMPORTANT] 
->  Because the Flask server and the frontend web app server are running on different ports, **you will need to
-use public ports in codespaces.** To do this look for the `ports` tab at the top of your terminal in vscode. If the port
-> visibilities of the available ports are already public skip this step. If they are private look for port 8000, 
-right click on it, select Port Visibility and set it to public. Do the same for port 3000.
+2. Make ports in Github Codespaces public
 
-<img src="./docs/port-visibility.png" alt="Screenshot showing setting port-visibility" width="800px" />
+    Because the Flask server and the frontend web app server are running on different ports, **you will need to
+    use public ports in codespaces.** To do this look for the `ports` tab at the top of your terminal in vscode. If the port
+    visibilities of the available ports are already public skip this step. If they are private look for port 8000, 
+    right click on it, select Port Visibility and set it to public. Do the same for port 3000.
 
-2. Next open a **new terminal** and launch the web app
+    <img src="./docs/port-visibility.png" alt="Screenshot showing setting port-visibility" width="800px" />
+
+3. Next open a **new terminal** and launch the web app
 
   ```bash
   cd frontend
