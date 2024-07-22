@@ -10,21 +10,28 @@ jobs:
     strategy:
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: ['20']
+        python_version: ["3.9", "3.10", "3.11", "3.12"]
 
-    name: ${{ matrix.platform }} / Node.js v${{ matrix.node-version }}
+    name: ${{ matrix.platform }} / Python ${{ matrix.python_version }}
     runs-on: ${{ matrix.platform }}
     steps:
-      - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
-      - name: Setup Node.js v${{ matrix.node-version }}
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+            python-version: ${{ matrix.python_version }}
+            architecture: x64
+      - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+            node-version: 18
+      - name: Build frontend
+        run: |
+          cd ./app/frontend
+          npm install
+          npm run build
       - name: Install dependencies
         run: npm cache verify && npm ci
-      - name: Build packages
-        run: npm run build
       - name: Test packages
         run: npm test --if-present || exit 0
 
