@@ -330,7 +330,7 @@ This template has either [Managed Identity](https://learn.microsoft.com/entra/id
 
 Here are some resources to learn more about the technologies used in this sample:
 
-- [LlamaIndexTS Documentation](https://ts.llamaindex.ai) - learn about LlamaIndex (Typescript features).
+- [LlamaIndex Documentation](https://docs.llamaindex.ai/) - learn about LlamaIndex (Python features).
 - [Generative AI For Beginners](https://github.com/microsoft/generative-ai-for-beginners)
 - [Azure OpenAI Service](https://learn.microsoft.com/azure/ai-services/openai/overview)
 - [Azure OpenAI Assistant Builder](https://github.com/Azure-Samples/azure-openai-assistant-builder)
