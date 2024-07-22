@@ -266,15 +266,7 @@ Then you can get the project code:
      poetry install
     ```
 
-4. Install the frontend dependencies:
-
-    ```bash
-     cd ..
-     cd frontend 
-     npm install
-    ```
-    
-5. Provision and deploy the project to Azure:
+4. Provision and deploy the project to Azure:
 
     ```shell
     azd up
@@ -286,11 +278,20 @@ Then you can get the project code:
     ```
     Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
 
-6. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
+5. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
 
     ```bash
     poetry run generate
     ```
+
+6. Install the frontend dependencies:
+
+    ```bash
+     cd ..
+     cd frontend 
+     npm install
+    ```
+
 7. Configure a CI/CD pipeline:
 
     ```shell
