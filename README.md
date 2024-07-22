@@ -71,11 +71,26 @@ You can run this template virtually by using GitHub Codespaces. The button will 
     
 5. Create a python virtual environment and install the python dependencies:
 
+    Linux and MacOS venv activation:
     ```bash
      cd backend 
      python3 -m venv venv
      source venv/bin/activate
-     poetry install
+    ```
+
+    Windows venv activation:
+    ```bash
+     cd backend 
+     python3 -m venv venv
+     # In cmd.exe
+     venv\Scripts\activate.bat
+     # In PowerShell
+     venv\Scripts\Activate.ps1
+    ```
+
+    Install dependencies with poetry: 
+    ```bash
+    poetry install
     ```
 
     You will also need to ensure the environment variables are accessible. You can do this by running the following command: 
