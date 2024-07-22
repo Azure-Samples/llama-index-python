@@ -1,0 +1,92 @@
+name: Build and test
+
+on:
+  workflow_dispatch:
+  push:
+    # Run when commits are pushed to mainline branch (main or master)
+    # Set this to the mainline branch you are using
+    branches:
+      - main
+
+# Set up permissions for deploying with secretless Azure federated credentials
+# https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-portal%2Clinux#set-up-azure-login-with-openid-connect-authentication
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_CONTAINER_REGISTRY_ENDPOINT: ${{ vars.AZURE_CONTAINER_REGISTRY_ENDPOINT }}
+      AZURE_DEPLOYMENT_NAME:  ${{ vars.AZURE_DEPLOYMENT_NAME }}
+      AZURE_KEY_VAULT_ENDPOINT: ${{ vars.AZURE_KEY_VAULT_ENDPOINT }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME}}
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+      EMBEDDING_DIM: ${{ vars.EMBEDDING_DIM }}
+      EMBEDDING_MODEL: ${{ vars.EMBEDDING_MODEL }}
+      FILESERVER_URL_PREFIX: ${{ vars.FILESERVER_URL_PREFIX }}
+      LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
+      LLM_TEMPERATURE: ${{ vars.LLM_TEMPERATURE }}
+      MODEL: ${{ vars.MODEL }}
+      MODEL_PROVIDER: ${{ vars.MODEL_PROVIDER }}
+      OPENAI_API_KEY: ""
+      OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
+      SERVICE_LLAMA_INDEX_PYTHON_IMAGE_NAME: ${{ vars.SERVICE_LLAMA_INDEX_PYTHON_IMAGE_NAME }}
+      SERVICE_LLAMA_INDEX_PYTHON_RESOURCE_EXISTS: ${{ vars.SERVICE_LLAMA_INDEX_PYTHON_RESOURCE_EXISTS }}
+      SYSTEM_PROMPT: ${{ vars.SYSTEM_PROMPT }}
+      TOP_K: ${{ vars.TOP_K }}
+    
+    steps:
+      - name: checkout repo content
+        uses: actions/checkout@v4 # checkout the repository content
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # install the python version needed
+
+      - name: install python packages
+        run: |
+          cd ./backend 
+          python3 -m venv venv
+          source venv/bin/activate
+          poetry install
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ env.AZURE_CREDENTIALS }}
+          # WAS:
+          #client-id: ${{ env.AZURE_CLIENT_ID }}
+          #tenant-id: ${{ env.AZURE_TENANT_ID }}
+          #subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+
+      - name: Set az account
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az account set --subscription ${{env.AZURE_SUBSCRIPTION_ID}}
+
+      - name: run flask server 
+        working-directory: ./backend
+        run: |
+         azd env get-values > .env  
+         python main.py
+      
+      - name: install npm packages
+        working-directory: ./frontend
+        run: |
+          npm install
+    
+      - name: run dev server 
+        working-directory: ./frontend
+        run: |
+            npm run dev
+        
