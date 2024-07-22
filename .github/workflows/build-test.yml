@@ -51,9 +51,13 @@ jobs:
                 cd ./frontend
                 npm install
           - name: Build packages
-            run: npm run build
+            run: |
+                cd ./frontend
+                npm run build
           - name: Test packages
-            run: npm test --if-present || exit 0
+            run: |
+                cd ./frontend
+                npm test --if-present || exit 0
 
           - name: install python dependencies
             run: |
