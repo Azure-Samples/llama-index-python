@@ -174,7 +174,7 @@ module openAiRoleUser './shared/role.bicep' = if (createRoleForUser && createAzu
   }
 }
 
-module openAiRoleBackend './shared/role.bicep' = if (createAzureOpenAi) {
+module openAiRoleBackend './shared/role.bicep' = if (createAzureOpenAi && !createRoleForUser) {
   scope: rg
   name: 'openai-role-backend'
   params: {
