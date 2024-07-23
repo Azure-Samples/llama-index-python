@@ -56,6 +56,20 @@ jobs:
             - name: Install azd
               uses: Azure/setup-azd@v1.0.0
 
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.11'
+
+            - name: Log in with Azure (Federated Credentials)
+              if: ${{ env.AZURE_CLIENT_ID != '' }}
+              run: |
+                azd auth login `
+                  --client-id "$Env:AZURE_CLIENT_ID" `
+                  --federated-credential-provider "github" `
+                  --tenant-id "$Env:AZURE_TENANT_ID"
+              shell: pwsh
+
             - name: Log in with Azure (Client Credentials)
               if: ${{ env.AZURE_CREDENTIALS != '' }}
               run: |
@@ -63,12 +77,25 @@ jobs:
                 Write-Host "::add-mask::$($info.clientSecret)"
 
                 azd auth login `
-                --client-id "$($info.clientId)" `
-                --client-secret "$($info.clientSecret)" `
-                --tenant-id "$($info.tenantId)"
+                  --client-id "$($info.clientId)" `
+                  --client-secret "$($info.clientSecret)" `
+                  --tenant-id "$($info.tenantId)"
               shell: pwsh
               env:
                 AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+
+            - name: Azure login
+              uses: azure/login@v2
+              with:
+                client-id: ${{ env.AZURE_CLIENT_ID }}
+                tenant-id: ${{ env.AZURE_TENANT_ID }}
+                subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+            - name: Set az account
+              uses: azure/CLI@v2
+              with:
+                inlineScript: |
+                  az account set --subscription ${{env.AZURE_SUBSCRIPTION_ID}}
 
             - name: Provision Infrastructure
               run: azd provision --no-prompt
