@@ -9,6 +9,12 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
+@description('Flag to decide where to create OpenAI role for current user')
+param createRoleForUser bool = true
+
+@description('Flag to decide whether to create Azure OpenAI instance or not')
+param createAzureOpenAi bool // Set in main.parameters.json
+
 param llamaIndexPythonExists bool
 @secure()
 param llamaIndexPythonDefinition object
@@ -157,7 +163,7 @@ module openAi './shared/cognitiveservices.bicep' = if (empty(openAiUrl)) {
 // Roles
 
 // User roles
-module openAiRoleUser './shared/role.bicep' = {
+module openAiRoleUser './shared/role.bicep' = if (createRoleForUser && createAzureOpenAi) {
   scope: rg
   name: 'openai-role-user'
   params: {
@@ -165,6 +171,16 @@ module openAiRoleUser './shared/role.bicep' = {
     // Cognitive Services OpenAI User
     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
     principalType: 'User'
+  }
+}
+
+module openAiRoleBackend './shared/role.bicep' = if (createAzureOpenAi) {
+  scope: rg
+  name: 'openai-role-backend'
+  params: {
+    principalId: principalId
+    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+    principalType: 'ServicePrincipal'
   }
 }
 

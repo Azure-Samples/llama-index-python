@@ -30,6 +30,12 @@
     },
     "azureDeploymentName": {
       "value": "${AZURE_DEPLOYMENT_NAME=gpt-35-turbo}"
-    }
+    },
+    "createAzureOpenAi": {
+        "value": "${CREATE_AZURE_OPENAI=true}"
+      },
+      "createRoleForUser": {
+        "value": "${CREATE_ROLE_FOR_USER=true}"
+      }
   }
 }
