@@ -78,16 +78,6 @@ You can run this template virtually by using GitHub Codespaces. The button will 
      source venv/bin/activate
     ```
 
-    Windows venv activation:
-    ```bash
-     cd backend 
-     python3 -m venv venv
-     # In cmd.exe
-     venv\Scripts\activate.bat
-     # In PowerShell
-     venv\Scripts\Activate.ps1
-    ```
-
     Install dependencies with poetry: 
     ```bash
     poetry install
