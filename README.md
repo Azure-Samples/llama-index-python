@@ -30,6 +30,7 @@ This sample shows how to quickly get started with [LlamaIndex.ai](https://www.ll
 [![Features](https://img.shields.io/badge/🚀%20Features-blue?style=flat-square)](#features)
 [![Architecture Diagram](https://img.shields.io/badge/🏗️%20Architecture%20Diagram-blue?style=flat-square)](#architecture-diagram)
 [![Getting Started](https://img.shields.io/badge/🚦%20Getting%20Started-blue?style=flat-square)](#getting-started)
+[![Personalize The App](https://img.shields.io/badge/🔧%20Personalize%20the%20app-blue?style=flat-square)](#personalize-the-app)
 [![Guidance](https://img.shields.io/badge/📚%20Guidance-blue?style=flat-square)](#guidance)
 [![Resources](https://img.shields.io/badge/📚%20Resources-blue?style=flat-square)](#resources)
 [![Troubleshooting](https://img.shields.io/badge/🛠️%20Troubleshooting-blue?style=flat-square)](#troubleshooting)
@@ -323,6 +324,19 @@ The app is now ready to run! To test it, run the following commands:
 
 Open the URL `http://localhost:3000` in your browser to interact with the bot.
 An example question to ask is 'Can you tell me how much it costs to send a large parcel to France?'
+
+## Personalize The App
+
+1. Use your own data: 
+  - Add any data you want to include in the `./backend/data` folder.
+  - cd `./backend` and then run `poetry run generate`
+  - then run the fastapi dev server using `python [main.py](http://main.py/)`
+  - open a new terminal cd into frontend and run `npm run dev`
+
+2. Change the look of the app:
+  - Change app name in `header.tsx`
+  - Change app avatar by adding a new image in `./frontend/public` and replace the places in `header.tsx` and `chat-avatar.tsx` that have `llama.png` with your image name.
+  - Edit colors on the page in `global.css` , background colors can be changed by making changes to `.background-gradient`
 
 ## Guidance
 
