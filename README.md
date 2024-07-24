@@ -1,3 +1,21 @@
+---
+page_type: sample
+languages:
+- azdeveloper
+- python
+- js
+- typescript
+- bash
+- bicep
+products:
+- azure
+- azure-openai
+- llama-index
+urlFragment: llama-index-python
+name: Serverless Azure OpenAI Quick Start with LlamaIndex (Python Implementation)
+description: This sample shows how to quickly get started with LlamaIndex on Azure by building a RAG chatbot application. 
+---
+
 <div align="center">
 
 # Serverless Azure OpenAI Quick Start with LlamaIndex <br> (Python)
