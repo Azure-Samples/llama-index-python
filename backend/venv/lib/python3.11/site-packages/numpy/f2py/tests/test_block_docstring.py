@@ -5,7 +5,6 @@ from . import util
 from numpy.testing import IS_PYPY
 
 
-@pytest.mark.slow
 class TestBlockDocString(util.F2PyTest):
     sources = [util.getpath("tests", "src", "block_docstring", "foo.f")]
 

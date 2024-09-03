@@ -4,6 +4,14 @@ Utility classes and functions for the polynomial modules.
 This module provides: error and warning objects; a polynomial base class;
 and some routines used in both the `polynomial` and `chebyshev` modules.
 
+Warning objects
+---------------
+
+.. autosummary::
+   :toctree: generated/
+
+   RankWarning  raised in least-squares fit for rank-deficient matrix.
+
 Functions
 ---------
 
@@ -24,12 +32,21 @@ import warnings
 
 import numpy as np
 
-from numpy._core.multiarray import dragon4_positional, dragon4_scientific
-from numpy.exceptions import RankWarning
+from numpy.core.multiarray import dragon4_positional, dragon4_scientific
+from numpy.core.umath import absolute
 
 __all__ = [
-    'as_series', 'trimseq', 'trimcoef', 'getdomain', 'mapdomain', 'mapparms',
+    'RankWarning', 'as_series', 'trimseq',
+    'trimcoef', 'getdomain', 'mapdomain', 'mapparms',
     'format_float']
+
+#
+# Warnings and Exceptions
+#
+
+class RankWarning(UserWarning):
+    """Issued by chebfit when the design matrix is rank deficient."""
+    pass
 
 #
 # Helper functions to convert inputs to 1-D arrays
@@ -40,7 +57,8 @@ def trimseq(seq):
     Parameters
     ----------
     seq : sequence
-        Sequence of Poly series coefficients.
+        Sequence of Poly series coefficients. This routine fails for
+        empty sequences.
 
     Returns
     -------
@@ -54,7 +72,7 @@ def trimseq(seq):
     Do not lose the type info if the sequence contains unknown objects.
 
     """
-    if len(seq) == 0 or seq[-1] != 0:
+    if len(seq) == 0:
         return seq
     else:
         for i in range(len(seq) - 1, -1, -1):
@@ -113,10 +131,9 @@ def as_series(alist, trim=True):
     [array([2.]), array([1.1, 0. ])]
 
     """
-    arrays = [np.array(a, ndmin=1, copy=None) for a in alist]
-    for a in arrays:
-        if a.size == 0:
-            raise ValueError("Coefficient array is empty")
+    arrays = [np.array(a, ndmin=1, copy=False) for a in alist]
+    if min([a.size for a in arrays]) == 0:
+        raise ValueError("Coefficient array is empty")
     if any(a.ndim != 1 for a in arrays):
         raise ValueError("Coefficient array is not 1-d")
     if trim:
@@ -167,6 +184,10 @@ def trimcoef(c, tol=0):
     ------
     ValueError
         If `tol` < 0
+
+    See Also
+    --------
+    trimseq
 
     Examples
     --------
@@ -413,7 +434,7 @@ def _vander_nd(vander_fs, points, degrees):
         raise ValueError("Unable to guess a dtype or shape when no points are given")
 
     # convert to the same shape and type
-    points = tuple(np.asarray(tuple(points)) + 0.0)
+    points = tuple(np.array(tuple(points), copy=False) + 0.0)
 
     # produce the vandermonde matrix for each dimension, placing the last
     # axis of each in an independent trailing axis of the output
@@ -696,26 +717,41 @@ def _pow(mul_f, c, pow, maxpower):
         return prd
 
 
-def _as_int(x, desc):
+def _deprecate_as_int(x, desc):
     """
-    Like `operator.index`, but emits a custom exception when passed an 
-    incorrect type
+    Like `operator.index`, but emits a deprecation warning when passed a float
 
     Parameters
     ----------
-    x : int-like
+    x : int-like, or float with integral value
         Value to interpret as an integer
     desc : str
         description to include in any error message
 
     Raises
     ------
-    TypeError : if x is a float or non-numeric
+    TypeError : if x is a non-integral float or non-numeric
+    DeprecationWarning : if x is an integral float
     """
     try:
         return operator.index(x)
     except TypeError as e:
-        raise TypeError(f"{desc} must be an integer, received {x}") from e
+        # Numpy 1.17.0, 2019-03-11
+        try:
+            ix = int(x)
+        except TypeError:
+            pass
+        else:
+            if ix == x:
+                warnings.warn(
+                    f"In future, this will raise TypeError, as {desc} will "
+                    "need to be an integer not just an integral float.",
+                    DeprecationWarning,
+                    stacklevel=3
+                )
+                return ix
+
+        raise TypeError(f"{desc} must be an integer") from e
 
 
 def format_float(x, parens=False):
@@ -731,7 +767,7 @@ def format_float(x, parens=False):
 
     exp_format = False
     if x != 0:
-        a = np.abs(x)
+        a = absolute(x)
         if a >= 1.e8 or a < 10**min(0, -(opts['precision']-1)//2):
             exp_format = True
 

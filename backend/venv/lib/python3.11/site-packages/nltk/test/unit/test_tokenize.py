@@ -2,6 +2,7 @@
 Unit tests for nltk.tokenize.
 See also nltk/test/tokenize.doctest
 """
+
 from typing import List, Tuple
 
 import pytest
@@ -16,6 +17,7 @@ from nltk.tokenize import (
     sent_tokenize,
     word_tokenize,
 )
+from nltk.tokenize.simple import CharTokenizer
 
 
 def load_stanford_segmenter():
@@ -323,7 +325,14 @@ class TestTokenize:
         seg.default_config("zh")
         sent = "这是斯坦福中文分词器测试"
         segmented_sent = seg.segment(sent.split())
-        assert segmented_sent.split() == ["这", "是", "斯坦福", "中文", "分词器", "测试"]
+        assert segmented_sent.split() == [
+            "这",
+            "是",
+            "斯坦福",
+            "中文",
+            "分词器",
+            "测试",
+        ]
 
     def test_phone_tokenizer(self):
         """
@@ -736,14 +745,13 @@ class TestTokenize:
         assert word_tokenize(sentence) == expected
 
     def test_punkt_pair_iter(self):
-
         test_cases = [
             ("12", [("1", "2"), ("2", None)]),
             ("123", [("1", "2"), ("2", "3"), ("3", None)]),
             ("1234", [("1", "2"), ("2", "3"), ("3", "4"), ("4", None)]),
         ]
 
-        for (test_input, expected_output) in test_cases:
+        for test_input, expected_output in test_cases:
             actual_output = [x for x in punkt._pair_iter(test_input)]
 
             assert actual_output == expected_output
@@ -768,7 +776,6 @@ class TestTokenize:
         list(obj._tokenize_words("test"))
 
     def test_punkt_tokenize_custom_lang_vars(self):
-
         # Create LangVars including a full stop end character as used in Bengali
         class BengaliLanguageVars(punkt.PunktLanguageVars):
             sent_end_chars = (".", "?", "!", "\u0964")
@@ -786,7 +793,6 @@ class TestTokenize:
         assert obj.tokenize(sentences) == expected
 
     def test_punkt_tokenize_no_custom_lang_vars(self):
-
         obj = punkt.PunktSentenceTokenizer()
 
         # We expect these sentences to not be split properly, as the Bengali full stop '।' is not included in the default language vars
@@ -810,7 +816,7 @@ class TestTokenize:
             # with one split and hence one decision.
             # Test debug_decisions on a text with one sentences,
             # which is not split.
-            ("This is just a normal sentence, just like any other.", 1, 0)
+            ("This is just a normal sentence, just like any other.", 1, 0),
             # Hence just 1
         ],
     )
@@ -865,3 +871,35 @@ class TestTokenize:
     )
     def test_sent_tokenize(self, sentences: str, expected: List[str]):
         assert sent_tokenize(sentences) == expected
+
+    def test_string_tokenizer(self) -> None:
+        sentence = "Hello there"
+        tokenizer = CharTokenizer()
+        assert tokenizer.tokenize(sentence) == list(sentence)
+        assert list(tokenizer.span_tokenize(sentence)) == [
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (7, 8),
+            (8, 9),
+            (9, 10),
+            (10, 11),
+        ]
+
+
+class TestPunktTrainer:
+    def test_punkt_train(self) -> None:
+        trainer = punkt.PunktTrainer()
+        trainer.train("This is a test.")
+
+    def test_punkt_train_single_word(self) -> None:
+        trainer = punkt.PunktTrainer()
+        trainer.train("This.")
+
+    def test_punkt_train_no_punc(self) -> None:
+        trainer = punkt.PunktTrainer()
+        trainer.train("This is a test")

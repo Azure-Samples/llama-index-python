@@ -1,12 +1,11 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
-from numpy import uint32
-from numpy.typing import NDArray
+from numpy import dtype, ndarray, uint32
 from numpy.random.bit_generator import BitGenerator, SeedSequence
 from numpy._typing import _ArrayLikeInt_co
 
 class _MT19937Internal(TypedDict):
-    key: NDArray[uint32]
+    key: ndarray[Any, dtype[uint32]]
     pos: int
 
 class _MT19937State(TypedDict):

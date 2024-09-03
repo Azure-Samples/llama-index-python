@@ -1,14 +1,11 @@
 # Natural Language Toolkit: Collections
 #
-# Copyright (C) 2001-2023 NLTK Project
+# Copyright (C) 2001-2024 NLTK Project
 # Author: Steven Bird <stevenbird1@gmail.com>
 # URL: <https://www.nltk.org/>
 # For license information, see LICENSE.TXT
 
 import bisect
-
-# this unused import is for python 2.7
-from collections import Counter, defaultdict, deque
 from functools import total_ordering
 from itertools import chain, islice
 
@@ -61,7 +58,6 @@ class OrderedDict(dict):
         return d
 
     def items(self):
-        # returns iterator under python 3 and list under python 2
         return zip(self.keys(), self.values())
 
     def keys(self, data=None, keys=None):
@@ -106,7 +102,6 @@ class OrderedDict(dict):
                 self._keys.append(key)
 
     def values(self):
-        # returns iterator under python 3
         return map(self.get, self._keys)
 
 

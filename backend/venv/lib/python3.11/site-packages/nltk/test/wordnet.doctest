@@ -1,4 +1,4 @@
-.. Copyright (C) 2001-2023 NLTK Project
+b.. Copyright (C) 2001-2024 NLTK Project
 .. For license information, see LICENSE.TXT
 
 =================
@@ -101,13 +101,13 @@ Synsets
 `Synset`: a set of synonyms that share a common meaning.
 
     >>> dog = wn.synset('dog.n.01')
-    >>> dog.hypernyms()
+    >>> sorted(dog.hypernyms())
     [Synset('canine.n.02'), Synset('domestic_animal.n.01')]
-    >>> dog.hyponyms()
+    >>> sorted(dog.hyponyms())
     [Synset('basenji.n.01'), Synset('corgi.n.01'), Synset('cur.n.01'), Synset('dalmatian.n.02'), ...]
-    >>> dog.member_holonyms()
+    >>> sorted(dog.member_holonyms())
     [Synset('canis.n.01'), Synset('pack.n.06')]
-    >>> dog.root_hypernyms()
+    >>> sorted(dog.root_hypernyms())
     [Synset('entity.n.01')]
     >>> wn.synset('dog.n.01').lowest_common_hypernyms(wn.synset('cat.n.01'))
     [Synset('carnivore.n.01')]
@@ -439,21 +439,17 @@ Compute transitive closures of synsets
     >>> dog = wn.synset('dog.n.01')
     >>> hypo = lambda s: s.hyponyms()
     >>> hyper = lambda s: s.hypernyms()
-    >>> list(dog.closure(hypo, depth=1)) == dog.hyponyms()
+    >>> sorted(dog.closure(hypo, depth=1)) == sorted(dog.hyponyms())
     True
-    >>> list(dog.closure(hyper, depth=1)) == dog.hypernyms()
+    >>> sorted(dog.closure(hyper, depth=1)) == sorted(dog.hypernyms())
     True
-    >>> list(dog.closure(hypo))
-    [Synset('basenji.n.01'), Synset('corgi.n.01'), Synset('cur.n.01'),
-     Synset('dalmatian.n.02'), Synset('great_pyrenees.n.01'),
-     Synset('griffon.n.02'), Synset('hunting_dog.n.01'), Synset('lapdog.n.01'),
-     Synset('leonberg.n.01'), Synset('mexican_hairless.n.01'),
-     Synset('newfoundland.n.01'), Synset('pooch.n.01'), Synset('poodle.n.01'), ...]
-    >>> list(dog.closure(hyper))
-    [Synset('canine.n.02'), Synset('domestic_animal.n.01'), Synset('carnivore.n.01'), Synset('animal.n.01'),
-    Synset('placental.n.01'), Synset('organism.n.01'), Synset('mammal.n.01'), Synset('living_thing.n.01'),
-    Synset('vertebrate.n.01'), Synset('whole.n.02'), Synset('chordate.n.01'), Synset('object.n.01'),
-    Synset('physical_entity.n.01'), Synset('entity.n.01')]
+    >>> sorted(dog.closure(hypo))
+    [Synset('affenpinscher.n.01'), Synset('afghan_hound.n.01'), Synset('airedale.n.01'), Synset('american_foxhound.n.01'), ...]
+    >>> sorted(dog.closure(hyper))
+    [Synset('animal.n.01'), Synset('canine.n.02'), Synset('carnivore.n.01'), Synset('chordate.n.01'),
+    Synset('domestic_animal.n.01'), Synset('entity.n.01'), Synset('living_thing.n.01'),
+    Synset('mammal.n.01'), Synset('object.n.01'), Synset('organism.n.01'), Synset('physical_entity.n.01'),
+    Synset('placental.n.01'), Synset('vertebrate.n.01'), Synset('whole.n.02')]
 
 
 ----------------
@@ -621,12 +617,12 @@ Bug https://github.com/nltk/nltk/issues/1641: Non-English lemmas containing capi
 
 Patch-1 https://github.com/nltk/nltk/pull/2065  Adding 3 functions (relations) to WordNet class
 
-    >>> wn.synsets("computer_science")[0].in_topic_domains()[2]
-    Synset('access_time.n.01')
-    >>> wn.synsets("France")[0].in_region_domains()[18]
-    Synset('french.n.01')
-    >>> wn.synsets("slang")[1].in_usage_domains()[18]
-    Synset('can-do.s.01')
+    >>> sorted(sorted(wn.synsets("computer_science"))[0].in_topic_domains())
+    [Synset('access.n.05'), Synset('access.v.01'), Synset('access_time.n.01'), Synset('accumulator.n.03'), ...]
+    >>> sorted(sorted(wn.synsets("France"))[0].in_region_domains())
+    [Synset('agincourt.n.01'), Synset('ancien_regime.n.01'), Synset('apache_dance.n.01'), Synset('bastille.n.01'), ...]
+    >>> sorted(sorted(wn.synsets("slang"))[2].in_usage_domains())
+    [Synset(''hood.n.01'), Synset('airhead.n.01'), Synset('arse.n.02'), Synset('baby.n.05'), Synset('bad_egg.n.01'), ...]
 
 Issue 2721: WordNetCorpusReader.ic() does not add smoothing to N
 
@@ -669,7 +665,7 @@ relations (verb_groups, attributes, and most also_sees). But in
 the current version, ``tree()`` now detects and discards these cycles:
 
     >>> from pprint import pprint
-    >>> pprint(wn.synset('bound.a.01').tree(lambda s:s.also_sees()))
+    >>> pprint(wn.synset('bound.a.01').tree(lambda s:sorted(s.also_sees())))
     [Synset('bound.a.01'),
      [Synset('unfree.a.02'),
       [Synset('confined.a.02'),
@@ -682,7 +678,7 @@ the current version, ``tree()`` now detects and discards these cycles:
 Specifying the "cut_mark" parameter increases verbosity, so that the cycles
 are mentioned in the output, together with the level where they occur:
 
-    >>> pprint(wn.synset('bound.a.01').tree(lambda s:s.also_sees(),cut_mark='...'))
+    >>> pprint(wn.synset('bound.a.01').tree(lambda s:sorted(s.also_sees()),cut_mark='...'))
     [Synset('bound.a.01'),
      [Synset('unfree.a.02'),
       "Cycle(Synset('bound.a.01'),-3,...)",
@@ -717,7 +713,7 @@ so its ``also_sees()`` tree is intractable, and can normally only be handled
 by limiting the ``depth`` parameter to display a small number of levels:
 
     >>> from pprint import pprint
-    >>> pprint(wn.synset('concrete.a.01').tree(lambda s:s.also_sees(),cut_mark='...',depth=2))
+    >>> pprint(wn.synset('concrete.a.01').tree(lambda s:sorted(s.also_sees()),cut_mark='...',depth=2))
     [Synset('concrete.a.01'),
      [Synset('practical.a.01'),
       "Cycle(Synset('concrete.a.01'),0,...)",
@@ -749,7 +745,7 @@ but it is not necessarily a **Minimum Spanning Tree** (MST), because the
 Depth-first search strategy does not guarantee that nodes are reached
 through the lowest number of links (as Breadth-first search would).
 
-    >>> pprint(wn.synset('bound.a.01').acyclic_tree(lambda s:s.also_sees()))
+    >>> pprint(wn.synset('bound.a.01').acyclic_tree(lambda s:sorted(s.also_sees())))
     [Synset('bound.a.01'),
      [Synset('unfree.a.02'),
       [Synset('confined.a.02'),
@@ -759,7 +755,7 @@ through the lowest number of links (as Breadth-first search would).
 Again, specifying the ``cut_mark`` parameter increases verbosity, so that the
 cycles are mentioned in the output, together with the level where they occur:
 
-    >>> pprint(wn.synset('bound.a.01').acyclic_tree(lambda s:s.also_sees(),cut_mark='...'))
+    >>> pprint(wn.synset('bound.a.01').acyclic_tree(lambda s:sorted(s.also_sees()),cut_mark='...'))
     [Synset('bound.a.01'),
      [Synset('unfree.a.02'),
       "Cycle(Synset('bound.a.01'),-3,...)",
@@ -782,7 +778,7 @@ In unweighted relation graphs like WordNet, a MST can be computed very efficient
 in linear time, using Breadth-First Search (BFS). Like acyclic_tree(), the new
 ``unweighted_minimum_spanning_tree()`` function (imported in the Wordnet
 module as ``mst``) handles intractable trees, such as the example discussed above:
-``wn.synset('concrete.a.01').mst(lambda s:s.also_sees())``.
+``wn.synset('concrete.a.01').mst(lambda s:sorted(s.also_sees()))``.
 
 But, while the also_sees() acyclic_tree of 'bound.a.01' reaches
 'classified.a.02' through four links, using depth-first search as seen above
@@ -791,7 +787,7 @@ in the following MST, the path to 'classified.a.02' is the shortest possible,
 consisting only in three links (bound.a.01 > unfree.a.02 > restricted.a.01 >
 classified.a.02):
 
-    >>> pprint(wn.synset('bound.a.01').mst(lambda s:s.also_sees()))
+    >>> pprint(wn.synset('bound.a.01').mst(lambda s:sorted(s.also_sees())))
     [Synset('bound.a.01'),
      [Synset('unfree.a.02'),
       [Synset('confined.a.02')],
@@ -810,13 +806,13 @@ Loading alternative Wordnet versions
     >>> print("Wordnet {}".format(wn31.get_version()))
     Wordnet 3.1
 
-    >>> print(wn.synset('restrain.v.01').hyponyms())
+    >>> print(sorted(wn.synset('restrain.v.01').hyponyms()))
     [Synset('confine.v.03'), Synset('control.v.02'), Synset('hold.v.36'), Synset('inhibit.v.04')]
 
-    >>> print(wn31.synset('restrain.v.01').hyponyms())
+    >>> print(sorted(wn31.synset('restrain.v.01').hyponyms()))
     [Synset('enchain.v.01'), Synset('fetter.v.01'), Synset('ground.v.02'), Synset('impound.v.02'), Synset('pen_up.v.01'), Synset('pinion.v.01'), Synset('pound.v.06'), Synset('tie_down.v.01')]
 
-    >>> print(wn31.synset('restrain.v.04').hyponyms())
+    >>> print(sorted(wn31.synset('restrain.v.04').hyponyms()))
     [Synset('baffle.v.03'), Synset('confine.v.02'), Synset('control.v.02'), Synset('hold.v.36'), Synset('rule.v.07'), Synset('swallow.v.06'), Synset('wink.v.04')]
 
 

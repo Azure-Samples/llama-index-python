@@ -33,6 +33,7 @@ class TestUdhr(unittest.TestCase):
 [Preamble]
 Trzecia Sesja Ogólnego Zgromadzenia ONZ, obradująca w Paryżu, \
 uchwaliła 10 grudnia 1948 roku jednomyślnie Powszechną"""
+
         assert text_pl == expected, "Polish-Latin2"
         assert text_ppl == expected, "Polish_Polski-Latin2"
 
@@ -74,7 +75,8 @@ class TestSinicaTreebank(unittest.TestCase):
     def test_sents(self):
         first_3_sents = sinica_treebank.sents()[:3]
         self.assertEqual(
-            first_3_sents, [["一"], ["友情"], ["嘉珍", "和", "我", "住在", "同一條", "巷子"]]
+            first_3_sents,
+            [["一"], ["友情"], ["嘉珍", "和", "我", "住在", "同一條", "巷子"]],
         )
 
     def test_parsed_sents(self):
@@ -102,7 +104,6 @@ class TestCoNLL2007(unittest.TestCase):
         )
 
     def test_parsed_sents(self):
-
         parsed_sents = conll2007.parsed_sents("esp.train")[0]
 
         self.assertEqual(

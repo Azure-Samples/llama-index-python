@@ -1,6 +1,6 @@
 # Natural Language Toolkit: NLTK's very own tokenizer.
 #
-# Copyright (C) 2001-2023 NLTK Project
+# Copyright (C) 2001-2024 NLTK Project
 # Author: Liling Tan
 #         Tom Aarsen <> (modifications)
 # URL: <https://www.nltk.org>
@@ -62,6 +62,7 @@ class NLTKWordTokenizer(TokenizerI):
         (re.compile("([»”’])", re.U), r" \1 "),
         (re.compile(r"''"), " '' "),
         (re.compile(r'"'), " '' "),
+        (re.compile(r"\s+"), " "),
         (re.compile(r"([^' ])('[sS]|'[mM]|'[dD]|') "), r"\1 \2 "),
         (re.compile(r"([^' ])('ll|'LL|'re|'RE|'ve|'VE|n't|N'T) "), r"\1 \2 "),
     ]
@@ -69,7 +70,7 @@ class NLTKWordTokenizer(TokenizerI):
     # For improvements for starting/closing quotes from TreebankWordTokenizer,
     # see discussion on https://github.com/nltk/nltk/pull/1437
     # Adding to TreebankWordTokenizer, nltk.word_tokenize now splits on
-    # - chervon quotes u'\xab' and u'\xbb' .
+    # - chevron quotes u'\xab' and u'\xbb'
     # - unicode quotes u'\u2018', u'\u2019', u'\u201c' and u'\u201d'
     # See https://github.com/nltk/nltk/issues/1995#issuecomment-376741608
     # Also, behavior of splitting on clitics now follows Stanford CoreNLP

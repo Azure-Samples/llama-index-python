@@ -44,14 +44,14 @@ class config(old_config):
         if sys.platform == 'win32' and (self.compiler.compiler_type in
                                         ('msvc', 'intelw', 'intelemw')):
             # XXX: hack to circumvent a python 2.6 bug with msvc9compiler:
-            # initialize call query_vcvarsall, which throws an OSError, and
+            # initialize call query_vcvarsall, which throws an IOError, and
             # causes an error along the way without much information. We try to
             # catch it here, hoping it is early enough, and print a helpful
             # message instead of Error: None.
             if not self.compiler.initialized:
                 try:
                     self.compiler.initialize()
-                except OSError as e:
+                except IOError as e:
                     msg = textwrap.dedent("""\
                         Could not initialize compiler instance: do you have Visual Studio
                         installed?  If you are trying to build with MinGW, please use "python setup.py

@@ -5,6 +5,10 @@ parameters provided in config files.
 import os
 import shlex
 import subprocess
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 
 __all__ = ['WindowsParser', 'PosixParser', 'NativeParser']
 
@@ -74,7 +78,7 @@ class PosixParser:
     """
     @staticmethod
     def join(argv):
-        return ' '.join(shlex.quote(arg) for arg in argv)
+        return ' '.join(quote(arg) for arg in argv)
 
     @staticmethod
     def split(cmd):

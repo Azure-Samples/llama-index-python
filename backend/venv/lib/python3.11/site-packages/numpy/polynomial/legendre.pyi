@@ -1,7 +1,6 @@
 from typing import Any
 
-from numpy import int_
-from numpy.typing import NDArray
+from numpy import ndarray, dtype, int_
 from numpy.polynomial._polybase import ABCPolyBase
 from numpy.polynomial.polyutils import trimcoef
 
@@ -12,10 +11,10 @@ legtrim = trimcoef
 def poly2leg(pol): ...
 def leg2poly(c): ...
 
-legdomain: NDArray[int_]
-legzero: NDArray[int_]
-legone: NDArray[int_]
-legx: NDArray[int_]
+legdomain: ndarray[Any, dtype[int_]]
+legzero: ndarray[Any, dtype[int_]]
+legone: ndarray[Any, dtype[int_]]
+legx: ndarray[Any, dtype[int_]]
 
 def legline(off, scl): ...
 def legfromroots(roots): ...

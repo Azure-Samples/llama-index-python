@@ -401,8 +401,8 @@ class AccessDescription:
 
     def __repr__(self) -> str:
         return (
-            "<AccessDescription(access_method={0.access_method}, access_locati"
-            "on={0.access_location})>".format(self)
+            f"<AccessDescription(access_method={self.access_method}, "
+            f"access_location={self.access_location})>"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -456,8 +456,9 @@ class BasicConstraints(ExtensionType):
 
     def __repr__(self) -> str:
         return (
-            "<BasicConstraints(ca={0.ca}, " "path_length={0.path_length})>"
-        ).format(self)
+            f"<BasicConstraints(ca={self.ca}, "
+            f"path_length={self.path_length})>"
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BasicConstraints):
@@ -729,6 +730,31 @@ _CRLREASONFLAGS = {
     ReasonFlags.aa_compromise: 8,
 }
 
+#    CRLReason ::= ENUMERATED {
+#        unspecified             (0),
+#        keyCompromise           (1),
+#        cACompromise            (2),
+#        affiliationChanged      (3),
+#        superseded              (4),
+#        cessationOfOperation    (5),
+#        certificateHold         (6),
+#             -- value 7 is not used
+#        removeFromCRL           (8),
+#        privilegeWithdrawn      (9),
+#        aACompromise           (10) }
+_CRL_ENTRY_REASON_ENUM_TO_CODE = {
+    ReasonFlags.unspecified: 0,
+    ReasonFlags.key_compromise: 1,
+    ReasonFlags.ca_compromise: 2,
+    ReasonFlags.affiliation_changed: 3,
+    ReasonFlags.superseded: 4,
+    ReasonFlags.cessation_of_operation: 5,
+    ReasonFlags.certificate_hold: 6,
+    ReasonFlags.remove_from_crl: 8,
+    ReasonFlags.privilege_withdrawn: 9,
+    ReasonFlags.aa_compromise: 10,
+}
+
 
 class PolicyConstraints(ExtensionType):
     oid = ExtensionOID.POLICY_CONSTRAINTS
@@ -851,8 +877,8 @@ class PolicyInformation:
 
     def __repr__(self) -> str:
         return (
-            "<PolicyInformation(policy_identifier={0.policy_identifier}, polic"
-            "y_qualifiers={0.policy_qualifiers})>".format(self)
+            f"<PolicyInformation(policy_identifier={self.policy_identifier}, "
+            f"policy_qualifiers={self.policy_qualifiers})>"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -903,8 +929,8 @@ class UserNotice:
 
     def __repr__(self) -> str:
         return (
-            "<UserNotice(notice_reference={0.notice_reference}, explicit_text="
-            "{0.explicit_text!r})>".format(self)
+            f"<UserNotice(notice_reference={self.notice_reference}, "
+            f"explicit_text={self.explicit_text!r})>"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -943,8 +969,8 @@ class NoticeReference:
 
     def __repr__(self) -> str:
         return (
-            "<NoticeReference(organization={0.organization!r}, notice_numbers="
-            "{0.notice_numbers})>".format(self)
+            f"<NoticeReference(organization={self.organization!r}, "
+            f"notice_numbers={self.notice_numbers})>"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -1431,32 +1457,29 @@ class GeneralNames:
         type: type[DNSName]
         | type[UniformResourceIdentifier]
         | type[RFC822Name],
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[DirectoryName],
-    ) -> list[Name]:
-        ...
+    ) -> list[Name]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[RegisteredID],
-    ) -> list[ObjectIdentifier]:
-        ...
+    ) -> list[ObjectIdentifier]: ...
 
     @typing.overload
     def get_values_for_type(
         self, type: type[IPAddress]
-    ) -> list[_IPAddressTypes]:
-        ...
+    ) -> list[_IPAddressTypes]: ...
 
     @typing.overload
-    def get_values_for_type(self, type: type[OtherName]) -> list[OtherName]:
-        ...
+    def get_values_for_type(
+        self, type: type[OtherName]
+    ) -> list[OtherName]: ...
 
     def get_values_for_type(
         self,
@@ -1509,32 +1532,29 @@ class SubjectAlternativeName(ExtensionType):
         type: type[DNSName]
         | type[UniformResourceIdentifier]
         | type[RFC822Name],
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[DirectoryName],
-    ) -> list[Name]:
-        ...
+    ) -> list[Name]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[RegisteredID],
-    ) -> list[ObjectIdentifier]:
-        ...
+    ) -> list[ObjectIdentifier]: ...
 
     @typing.overload
     def get_values_for_type(
         self, type: type[IPAddress]
-    ) -> list[_IPAddressTypes]:
-        ...
+    ) -> list[_IPAddressTypes]: ...
 
     @typing.overload
-    def get_values_for_type(self, type: type[OtherName]) -> list[OtherName]:
-        ...
+    def get_values_for_type(
+        self, type: type[OtherName]
+    ) -> list[OtherName]: ...
 
     def get_values_for_type(
         self,
@@ -1584,32 +1604,29 @@ class IssuerAlternativeName(ExtensionType):
         type: type[DNSName]
         | type[UniformResourceIdentifier]
         | type[RFC822Name],
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[DirectoryName],
-    ) -> list[Name]:
-        ...
+    ) -> list[Name]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[RegisteredID],
-    ) -> list[ObjectIdentifier]:
-        ...
+    ) -> list[ObjectIdentifier]: ...
 
     @typing.overload
     def get_values_for_type(
         self, type: type[IPAddress]
-    ) -> list[_IPAddressTypes]:
-        ...
+    ) -> list[_IPAddressTypes]: ...
 
     @typing.overload
-    def get_values_for_type(self, type: type[OtherName]) -> list[OtherName]:
-        ...
+    def get_values_for_type(
+        self, type: type[OtherName]
+    ) -> list[OtherName]: ...
 
     def get_values_for_type(
         self,
@@ -1659,32 +1676,29 @@ class CertificateIssuer(ExtensionType):
         type: type[DNSName]
         | type[UniformResourceIdentifier]
         | type[RFC822Name],
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[DirectoryName],
-    ) -> list[Name]:
-        ...
+    ) -> list[Name]: ...
 
     @typing.overload
     def get_values_for_type(
         self,
         type: type[RegisteredID],
-    ) -> list[ObjectIdentifier]:
-        ...
+    ) -> list[ObjectIdentifier]: ...
 
     @typing.overload
     def get_values_for_type(
         self, type: type[IPAddress]
-    ) -> list[_IPAddressTypes]:
-        ...
+    ) -> list[_IPAddressTypes]: ...
 
     @typing.overload
-    def get_values_for_type(self, type: type[OtherName]) -> list[OtherName]:
-        ...
+    def get_values_for_type(
+        self, type: type[OtherName]
+    ) -> list[OtherName]: ...
 
     def get_values_for_type(
         self,
@@ -1773,6 +1787,13 @@ class InvalidityDate(ExtensionType):
     @property
     def invalidity_date(self) -> datetime.datetime:
         return self._invalidity_date
+
+    @property
+    def invalidity_date_utc(self) -> datetime.datetime:
+        if self._invalidity_date.tzinfo is None:
+            return self._invalidity_date.replace(tzinfo=datetime.timezone.utc)
+        else:
+            return self._invalidity_date.astimezone(tz=datetime.timezone.utc)
 
     def public_bytes(self) -> bytes:
         return rust_x509.encode_extension_value(self)

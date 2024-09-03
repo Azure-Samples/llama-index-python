@@ -81,15 +81,15 @@ class _CopyMode(enum.Enum):
     """
 
     ALWAYS = True
-    NEVER = False
-    IF_NEEDED = 2
+    IF_NEEDED = False
+    NEVER = 2
 
     def __bool__(self):
         # For backwards compatibility
         if self == _CopyMode.ALWAYS:
             return True
 
-        if self == _CopyMode.NEVER:
+        if self == _CopyMode.IF_NEEDED:
             return False
 
         raise ValueError(f"{self} is neither True nor False.")

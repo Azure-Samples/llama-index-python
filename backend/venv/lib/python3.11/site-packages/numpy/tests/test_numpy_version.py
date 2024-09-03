@@ -39,16 +39,3 @@ def test_short_version():
     else:
         assert_(np.__version__.split("+")[0] == np.version.short_version,
                 "short_version mismatch in development version")
-
-
-def test_version_module():
-    contents = set([s for s in dir(np.version) if not s.startswith('_')])
-    expected = set([
-        'full_version',
-        'git_revision',
-        'release',
-        'short_version',
-        'version',
-    ])
-
-    assert contents == expected

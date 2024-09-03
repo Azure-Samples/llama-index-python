@@ -4,10 +4,18 @@ from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.indices.property_graph.sub_retrievers.base import (
     BasePGRetriever,
 )
-from llama_index.core.graph_stores.types import PropertyGraphStore, KG_SOURCE_REL
+from llama_index.core.graph_stores.types import (
+    PropertyGraphStore,
+    KG_SOURCE_REL,
+    VECTOR_SOURCE_KEY,
+)
 from llama_index.core.settings import Settings
-from llama_index.core.schema import NodeWithScore, QueryBundle
-from llama_index.core.vector_stores.types import VectorStoreQuery, VectorStore
+from llama_index.core.schema import BaseNode, NodeWithScore, QueryBundle
+from llama_index.core.vector_stores.types import (
+    VectorStoreQuery,
+    VectorStore,
+    MetadataFilters,
+)
 
 
 class VectorContextRetriever(BasePGRetriever):
@@ -37,6 +45,7 @@ class VectorContextRetriever(BasePGRetriever):
         vector_store: Optional[VectorStore] = None,
         similarity_top_k: int = 4,
         path_depth: int = 1,
+        filters: Optional[MetadataFilters] = None,
         **kwargs: Any
     ) -> None:
         self._retriever_kwargs = kwargs or {}
@@ -44,6 +53,7 @@ class VectorContextRetriever(BasePGRetriever):
         self._similarity_top_k = similarity_top_k
         self._vector_store = vector_store
         self._path_depth = path_depth
+        self._filters = filters
 
         super().__init__(graph_store=graph_store, include_text=include_text, **kwargs)
 
@@ -56,8 +66,13 @@ class VectorContextRetriever(BasePGRetriever):
         return VectorStoreQuery(
             query_embedding=query_bundle.embedding,
             similarity_top_k=self._similarity_top_k,
+            filters=self._filters,
             **self._retriever_kwargs,
         )
+
+    def _get_kg_ids(self, kg_nodes: List[BaseNode]) -> List[str]:
+        """Backward compatibility method to get kg_ids from kg_nodes."""
+        return [node.metadata.get(VECTOR_SOURCE_KEY, node.id_) for node in kg_nodes]
 
     async def _aget_vector_store_query(
         self, query_bundle: QueryBundle
@@ -72,6 +87,7 @@ class VectorContextRetriever(BasePGRetriever):
         return VectorStoreQuery(
             query_embedding=query_bundle.embedding,
             similarity_top_k=self._similarity_top_k,
+            filters=self._filters,
             **self._retriever_kwargs,
         )
 
@@ -95,7 +111,7 @@ class VectorContextRetriever(BasePGRetriever):
         elif self._vector_store is not None:
             query_result = self._vector_store.query(vector_store_query)
             if query_result.nodes is not None and query_result.similarities is not None:
-                kg_ids = [node.node_id for node in query_result.nodes if node.node_id]
+                kg_ids = self._get_kg_ids(query_result.nodes)
                 scores = query_result.similarities
                 kg_nodes = self._graph_store.get(ids=kg_ids)
                 triplets = self._graph_store.get_rel_map(
@@ -148,7 +164,7 @@ class VectorContextRetriever(BasePGRetriever):
         elif self._vector_store is not None:
             query_result = await self._vector_store.aquery(vector_store_query)
             if query_result.nodes is not None and query_result.similarities is not None:
-                kg_ids = [node.node_id for node in query_result.nodes]
+                kg_ids = self._get_kg_ids(query_result.nodes)
                 scores = query_result.similarities
                 kg_nodes = await self._graph_store.aget(ids=kg_ids)
                 triplets = await self._graph_store.aget_rel_map(

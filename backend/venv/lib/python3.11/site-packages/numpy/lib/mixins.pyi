@@ -17,7 +17,7 @@ class NDArrayOperatorsMixin(metaclass=ABCMeta):
     def __array_ufunc__(
         self,
         ufunc: ufunc,
-        method: L["__call__", "reduce", "reduceat", "accumulate", "outer", "at"],
+        method: L["__call__", "reduce", "reduceat", "accumulate", "outer", "inner"],
         *inputs: Any,
         **kwargs: Any,
     ) -> Any: ...

@@ -1,5 +1,5 @@
 """
-Tests for :mod:`numpy._core.numeric`.
+Tests for :mod:`numpy.core.numeric`.
 
 Does not include tests which fall under ``array_constructors``.
 
@@ -8,9 +8,8 @@ Does not include tests which fall under ``array_constructors``.
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 
-class SubClass(npt.NDArray[np.float64]):
+class SubClass(np.ndarray):
     ...
 
 i8 = np.int64(1)

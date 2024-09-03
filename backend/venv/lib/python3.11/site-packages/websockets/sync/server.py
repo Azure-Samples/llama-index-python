@@ -5,32 +5,31 @@ import logging
 import os
 import selectors
 import socket
-import ssl
+import ssl as ssl_module
 import sys
 import threading
+import warnings
 from types import TracebackType
-from typing import Any, Callable, Optional, Sequence, Type
-
-from websockets.frames import CloseCode
+from typing import Any, Callable, Sequence
 
 from ..extensions.base import ServerExtensionFactory
 from ..extensions.permessage_deflate import enable_server_permessage_deflate
+from ..frames import CloseCode
 from ..headers import validate_subprotocols
-from ..http import USER_AGENT
-from ..http11 import Request, Response
+from ..http11 import SERVER, Request, Response
 from ..protocol import CONNECTING, OPEN, Event
 from ..server import ServerProtocol
-from ..typing import LoggerLike, Origin, Subprotocol
+from ..typing import LoggerLike, Origin, StatusLike, Subprotocol
 from .connection import Connection
 from .utils import Deadline
 
 
-__all__ = ["serve", "unix_serve", "ServerConnection", "WebSocketServer"]
+__all__ = ["serve", "unix_serve", "ServerConnection", "Server"]
 
 
 class ServerConnection(Connection):
     """
-    Threaded implementation of a WebSocket server connection.
+    :mod:`threading` implementation of a WebSocket server connection.
 
     :class:`ServerConnection` provides :meth:`recv` and :meth:`send` methods for
     receiving and sending messages.
@@ -57,7 +56,7 @@ class ServerConnection(Connection):
         socket: socket.socket,
         protocol: ServerProtocol,
         *,
-        close_timeout: Optional[float] = 10,
+        close_timeout: float | None = 10,
     ) -> None:
         self.protocol: ServerProtocol
         self.request_rcvd = threading.Event()
@@ -67,22 +66,45 @@ class ServerConnection(Connection):
             close_timeout=close_timeout,
         )
 
+    def respond(self, status: StatusLike, text: str) -> Response:
+        """
+        Create a plain text HTTP response.
+
+        ``process_request`` and ``process_response`` may call this method to
+        return an HTTP response instead of performing the WebSocket opening
+        handshake.
+
+        You can modify the response before returning it, for example by changing
+        HTTP headers.
+
+        Args:
+            status: HTTP status code.
+            text: HTTP response body; it will be encoded to UTF-8.
+
+        Returns:
+            HTTP response to send to the client.
+
+        """
+        return self.protocol.reject(status, text)
+
     def handshake(
         self,
-        process_request: Optional[
+        process_request: (
             Callable[
                 [ServerConnection, Request],
-                Optional[Response],
+                Response | None,
             ]
-        ] = None,
-        process_response: Optional[
+            | None
+        ) = None,
+        process_response: (
             Callable[
                 [ServerConnection, Request, Response],
-                Optional[Response],
+                Response | None,
             ]
-        ] = None,
-        server_header: Optional[str] = USER_AGENT,
-        timeout: Optional[float] = None,
+            | None
+        ) = None,
+        server_header: str | None = SERVER,
+        timeout: float | None = None,
     ) -> None:
         """
         Perform the opening handshake.
@@ -118,7 +140,7 @@ class ServerConnection(Connection):
             if self.response is None:
                 self.response = self.protocol.accept(self.request)
 
-            if server_header is not None:
+            if server_header:
                 self.response.headers["Server"] = server_header
 
             if process_response is not None:
@@ -174,7 +196,7 @@ class ServerConnection(Connection):
             self.request_rcvd.set()
 
 
-class WebSocketServer:
+class Server:
     """
     WebSocket server returned by :func:`serve`.
 
@@ -188,6 +210,8 @@ class WebSocketServer:
         handler: Handler for one connection. Receives the socket and address
             returned by :meth:`~socket.socket.accept`.
         logger: Logger for this server.
+            It defaults to ``logging.getLogger("websockets.server")``.
+            See the :doc:`logging guide <../../topics/logging>` for details.
 
     """
 
@@ -195,8 +219,8 @@ class WebSocketServer:
         self,
         socket: socket.socket,
         handler: Callable[[socket.socket, Any], None],
-        logger: Optional[LoggerLike] = None,
-    ):
+        logger: LoggerLike | None = None,
+    ) -> None:
         self.socket = socket
         self.handler = handler
         if logger is None:
@@ -219,7 +243,13 @@ class WebSocketServer:
 
         """
         poller = selectors.DefaultSelector()
-        poller.register(self.socket, selectors.EVENT_READ)
+        try:
+            poller.register(self.socket, selectors.EVENT_READ)
+        except ValueError:  # pragma: no cover
+            # If shutdown() is called before poller.register(),
+            # the socket is closed and poller.register() raises
+            # ValueError: Invalid file descriptor: -1
+            return
         if sys.platform != "win32":
             poller.register(self.shutdown_watcher, selectors.EVENT_READ)
 
@@ -231,6 +261,9 @@ class WebSocketServer:
                 sock, addr = self.socket.accept()
             except OSError:
                 break
+            # Since there isn't a mechanism for tracking connections and waiting
+            # for them to terminate, we cannot use daemon threads, or else all
+            # connections would be terminate brutally when closing the server.
             thread = threading.Thread(target=self.handler, args=(sock, addr))
             thread.start()
 
@@ -250,78 +283,90 @@ class WebSocketServer:
         """
         return self.socket.fileno()
 
-    def __enter__(self) -> WebSocketServer:
+    def __enter__(self) -> Server:
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.shutdown()
 
 
+def __getattr__(name: str) -> Any:
+    if name == "WebSocketServer":
+        warnings.warn(
+            "WebSocketServer was renamed to Server",
+            DeprecationWarning,
+        )
+        return Server
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def serve(
     handler: Callable[[ServerConnection], None],
-    host: Optional[str] = None,
-    port: Optional[int] = None,
+    host: str | None = None,
+    port: int | None = None,
     *,
-    # TCP/TLS — unix and path are only for unix_serve()
-    sock: Optional[socket.socket] = None,
-    ssl_context: Optional[ssl.SSLContext] = None,
-    unix: bool = False,
-    path: Optional[str] = None,
+    # TCP/TLS
+    sock: socket.socket | None = None,
+    ssl: ssl_module.SSLContext | None = None,
     # WebSocket
-    origins: Optional[Sequence[Optional[Origin]]] = None,
-    extensions: Optional[Sequence[ServerExtensionFactory]] = None,
-    subprotocols: Optional[Sequence[Subprotocol]] = None,
-    select_subprotocol: Optional[
+    origins: Sequence[Origin | None] | None = None,
+    extensions: Sequence[ServerExtensionFactory] | None = None,
+    subprotocols: Sequence[Subprotocol] | None = None,
+    select_subprotocol: (
         Callable[
             [ServerConnection, Sequence[Subprotocol]],
-            Optional[Subprotocol],
+            Subprotocol | None,
         ]
-    ] = None,
-    process_request: Optional[
+        | None
+    ) = None,
+    process_request: (
         Callable[
             [ServerConnection, Request],
-            Optional[Response],
+            Response | None,
         ]
-    ] = None,
-    process_response: Optional[
+        | None
+    ) = None,
+    process_response: (
         Callable[
             [ServerConnection, Request, Response],
-            Optional[Response],
+            Response | None,
         ]
-    ] = None,
-    server_header: Optional[str] = USER_AGENT,
-    compression: Optional[str] = "deflate",
+        | None
+    ) = None,
+    server_header: str | None = SERVER,
+    compression: str | None = "deflate",
     # Timeouts
-    open_timeout: Optional[float] = 10,
-    close_timeout: Optional[float] = 10,
+    open_timeout: float | None = 10,
+    close_timeout: float | None = 10,
     # Limits
-    max_size: Optional[int] = 2**20,
+    max_size: int | None = 2**20,
     # Logging
-    logger: Optional[LoggerLike] = None,
+    logger: LoggerLike | None = None,
     # Escape hatch for advanced customization
-    create_connection: Optional[Type[ServerConnection]] = None,
-) -> WebSocketServer:
+    create_connection: type[ServerConnection] | None = None,
+    **kwargs: Any,
+) -> Server:
     """
     Create a WebSocket server listening on ``host`` and ``port``.
 
     Whenever a client connects, the server creates a :class:`ServerConnection`,
     performs the opening handshake, and delegates to the ``handler``.
 
-    The handler receives a :class:`ServerConnection` instance, which you can use
-    to send and receive messages.
+    The handler receives the :class:`ServerConnection` instance, which you can
+    use to send and receive messages.
 
     Once the handler completes, either normally or with an exception, the server
     performs the closing handshake and closes the connection.
 
-    :class:`WebSocketServer` mirrors the API of
+    This function returns a :class:`Server` whose API mirrors
     :class:`~socketserver.BaseServer`. Treat it as a context manager to ensure
-    that it will be closed and call the :meth:`~WebSocketServer.serve_forever`
-    method to serve requests::
+    that it will be closed and call :meth:`~Server.serve_forever` to serve
+    requests::
 
         def handler(websocket):
             ...
@@ -339,7 +384,7 @@ def serve(
         sock: Preexisting TCP socket. ``sock`` replaces ``host`` and ``port``.
             You may call :func:`socket.create_server` to create a suitable TCP
             socket.
-        ssl_context: Configuration for enabling TLS on the connection.
+        ssl: Configuration for enabling TLS on the connection.
         origins: Acceptable values of the ``Origin`` header, for defending
             against Cross-Site WebSocket Hijacking attacks. Include :obj:`None`
             in the list if the lack of an origin is acceptable.
@@ -356,13 +401,14 @@ def serve(
             :meth:`ServerProtocol.select_subprotocol
             <websockets.server.ServerProtocol.select_subprotocol>` method.
         process_request: Intercept the request during the opening handshake.
-            Return an HTTP response to force the response or :obj:`None` to
-            continue normally. When you force an HTTP 101 Continue response,
-            the handshake is successful. Else, the connection is aborted.
+            Return an HTTP response to force the response. Return :obj:`None` to
+            continue normally. When you force an HTTP 101 Continue response, the
+            handshake is successful. Else, the connection is aborted.
         process_response: Intercept the response during the opening handshake.
-            Return an HTTP response to force the response or :obj:`None` to
-            continue normally. When you force an HTTP 101 Continue response,
-            the handshake is successful. Else, the connection is aborted.
+            Modify the response or return a new HTTP response to force the
+            response. Return :obj:`None` to continue normally. When you force an
+            HTTP 101 Continue response, the handshake is successful. Else, the
+            connection is aborted.
         server_header: Value of  the ``Server`` response header.
             It defaults to ``"Python/x.y.z websockets/X.Y"``. Setting it to
             :obj:`None` removes the header.
@@ -381,9 +427,17 @@ def serve(
         create_connection: Factory for the :class:`ServerConnection` managing
             the connection. Set it to a wrapper or a subclass to customize
             connection handling.
+
+    Any other keyword arguments are passed to :func:`~socket.create_server`.
+
     """
 
     # Process parameters
+
+    # Backwards compatibility: ssl used to be called ssl_context.
+    if ssl is None and "ssl_context" in kwargs:
+        ssl = kwargs.pop("ssl_context")
+        warnings.warn("ssl_context was renamed to ssl", DeprecationWarning)
 
     if subprotocols is not None:
         validate_subprotocols(subprotocols)
@@ -398,21 +452,26 @@ def serve(
 
     # Bind socket and listen
 
+    # Private APIs for unix_connect()
+    unix: bool = kwargs.pop("unix", False)
+    path: str | None = kwargs.pop("path", None)
+
     if sock is None:
         if unix:
             if path is None:
                 raise TypeError("missing path argument")
-            sock = socket.create_server(path, family=socket.AF_UNIX)
+            kwargs.setdefault("family", socket.AF_UNIX)
+            sock = socket.create_server(path, **kwargs)
         else:
-            sock = socket.create_server((host, port))
+            sock = socket.create_server((host, port), **kwargs)
     else:
         if path is not None:
             raise TypeError("path and sock arguments are incompatible")
 
     # Initialize TLS wrapper
 
-    if ssl_context is not None:
-        sock = ssl_context.wrap_socket(
+    if ssl is not None:
+        sock = ssl.wrap_socket(
             sock,
             server_side=True,
             # Delay TLS handshake until after we set a timeout on the socket.
@@ -435,46 +494,45 @@ def serve(
 
             # Perform TLS handshake
 
-            if ssl_context is not None:
+            if ssl is not None:
                 sock.settimeout(deadline.timeout())
-                assert isinstance(sock, ssl.SSLSocket)  # mypy cannot figure this out
+                # mypy cannot figure this out
+                assert isinstance(sock, ssl_module.SSLSocket)
                 sock.do_handshake()
                 sock.settimeout(None)
 
-            # Create a closure so that select_subprotocol has access to self.
-
-            protocol_select_subprotocol: Optional[
+            # Create a closure to give select_subprotocol access to connection.
+            protocol_select_subprotocol: (
                 Callable[
                     [ServerProtocol, Sequence[Subprotocol]],
-                    Optional[Subprotocol],
+                    Subprotocol | None,
                 ]
-            ] = None
-
+                | None
+            ) = None
             if select_subprotocol is not None:
 
                 def protocol_select_subprotocol(
                     protocol: ServerProtocol,
                     subprotocols: Sequence[Subprotocol],
-                ) -> Optional[Subprotocol]:
+                ) -> Subprotocol | None:
                     # mypy doesn't know that select_subprotocol is immutable.
                     assert select_subprotocol is not None
                     # Ensure this function is only used in the intended context.
                     assert protocol is connection.protocol
                     return select_subprotocol(connection, subprotocols)
 
-            # Initialize WebSocket connection
+            # Initialize WebSocket protocol
 
             protocol = ServerProtocol(
                 origins=origins,
                 extensions=extensions,
                 subprotocols=subprotocols,
                 select_subprotocol=protocol_select_subprotocol,
-                state=CONNECTING,
                 max_size=max_size,
                 logger=logger,
             )
 
-            # Initialize WebSocket protocol
+            # Initialize WebSocket connection
 
             assert create_connection is not None  # help mypy
             connection = create_connection(
@@ -505,19 +563,20 @@ def serve(
 
     # Initialize server
 
-    return WebSocketServer(sock, conn_handler, logger)
+    return Server(sock, conn_handler, logger)
 
 
 def unix_serve(
-    handler: Callable[[ServerConnection], Any],
-    path: Optional[str] = None,
+    handler: Callable[[ServerConnection], None],
+    path: str | None = None,
     **kwargs: Any,
-) -> WebSocketServer:
+) -> Server:
     """
     Create a WebSocket server listening on a Unix socket.
 
-    This function is identical to :func:`serve`, except the ``host`` and
-    ``port`` arguments are replaced by ``path``. It's only available on Unix.
+    This function accepts the same keyword arguments as :func:`serve`.
+
+    It's only available on Unix.
 
     It's useful for deploying a server behind a reverse proxy such as nginx.
 
@@ -527,4 +586,4 @@ def unix_serve(
         path: File system path to the Unix socket.
 
     """
-    return serve(handler, path=path, unix=True, **kwargs)
+    return serve(handler, unix=True, path=path, **kwargs)

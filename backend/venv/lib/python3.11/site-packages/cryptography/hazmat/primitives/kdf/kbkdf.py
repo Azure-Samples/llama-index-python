@@ -75,7 +75,7 @@ class _KBKDFDeriver:
 
         if (label or context) and fixed:
             raise ValueError(
-                "When supplying fixed data, " "label and context are ignored."
+                "When supplying fixed data, label and context are ignored."
             )
 
         if rlen is None or not self._valid_byte_length(rlen):
@@ -86,6 +86,9 @@ class _KBKDFDeriver:
 
         if llen is not None and not isinstance(llen, int):
             raise TypeError("llen must be an integer")
+
+        if llen == 0:
+            raise ValueError("llen must be non-zero")
 
         if label is None:
             label = b""

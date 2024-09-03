@@ -140,7 +140,7 @@ class TestRegression:
         class M:
             a = np.arange(5)
 
-            def __array__(self, dtype=None, copy=None):
+            def __array__(self):
                 return self.a
 
         mt19937 = Generator(MT19937(1))

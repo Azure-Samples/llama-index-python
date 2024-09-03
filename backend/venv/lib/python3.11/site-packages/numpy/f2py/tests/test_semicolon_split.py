@@ -47,7 +47,6 @@ end python module {module_name}
     np.dtype(np.intp).itemsize < 8,
     reason="32-bit builds are buggy"
 )
-@pytest.mark.slow
 class TestCallstatement(util.F2PyTest):
     suffix = ".pyf"
     module_name = "callstatement"

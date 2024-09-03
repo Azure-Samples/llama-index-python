@@ -143,7 +143,7 @@ class TestRegression:
         class M:
             a = np.arange(5)
 
-            def __array__(self, dtype=None, copy=None):
+            def __array__(self):
                 return self.a
 
         random.seed(1)
@@ -165,15 +165,15 @@ class TestRegression:
         assert rs1.randint(0, 100) == rs2.randint(0, 100)
 
     def test_choice_retun_dtype(self):
-        # GH 9867, now long since the NumPy default changed.
+        # GH 9867
         c = np.random.choice(10, p=[.1]*10, size=2)
-        assert c.dtype == np.dtype(np.long)
+        assert c.dtype == np.dtype(int)
         c = np.random.choice(10, p=[.1]*10, replace=False, size=2)
-        assert c.dtype == np.dtype(np.long)
+        assert c.dtype == np.dtype(int)
         c = np.random.choice(10, size=2)
-        assert c.dtype == np.dtype(np.long)
+        assert c.dtype == np.dtype(int)
         c = np.random.choice(10, replace=False, size=2)
-        assert c.dtype == np.dtype(np.long)
+        assert c.dtype == np.dtype(int)
 
     @pytest.mark.skipif(np.iinfo('l').max < 2**32,
                         reason='Cannot test with 32-bit C long')

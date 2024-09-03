@@ -17,7 +17,7 @@ from numpy.fft._pocketfft import (
     ifftn as ifftn,
 )
 
-from numpy.fft._helper import (
+from numpy.fft.helper import (
     fftshift as fftshift,
     ifftshift as ifftshift,
     fftfreq as fftfreq,
@@ -25,4 +25,5 @@ from numpy.fft._helper import (
 )
 
 __all__: list[str]
+__path__: list[str]
 test: PytestTester

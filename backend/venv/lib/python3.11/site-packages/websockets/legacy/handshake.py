@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import List
 
 from ..datastructures import Headers, MultipleValuesError
 from ..exceptions import InvalidHeader, InvalidHeaderValue, InvalidUpgrade
@@ -24,7 +23,7 @@ def build_request(headers: Headers) -> str:
         headers: Handshake request headers.
 
     Returns:
-        str: ``key`` that must be passed to :func:`check_response`.
+        ``key`` that must be passed to :func:`check_response`.
 
     """
     key = generate_key()
@@ -48,21 +47,21 @@ def check_request(headers: Headers) -> str:
         headers: Handshake request headers.
 
     Returns:
-        str: ``key`` that must be passed to :func:`build_response`.
+        ``key`` that must be passed to :func:`build_response`.
 
     Raises:
         InvalidHandshake: If the handshake request is invalid.
             Then, the server must return a 400 Bad Request error.
 
     """
-    connection: List[ConnectionOption] = sum(
+    connection: list[ConnectionOption] = sum(
         [parse_connection(value) for value in headers.get_all("Connection")], []
     )
 
     if not any(value.lower() == "upgrade" for value in connection):
         raise InvalidUpgrade("Connection", ", ".join(connection))
 
-    upgrade: List[UpgradeProtocol] = sum(
+    upgrade: list[UpgradeProtocol] = sum(
         [parse_upgrade(value) for value in headers.get_all("Upgrade")], []
     )
 
@@ -135,14 +134,14 @@ def check_response(headers: Headers, key: str) -> None:
         InvalidHandshake: If the handshake response is invalid.
 
     """
-    connection: List[ConnectionOption] = sum(
+    connection: list[ConnectionOption] = sum(
         [parse_connection(value) for value in headers.get_all("Connection")], []
     )
 
     if not any(value.lower() == "upgrade" for value in connection):
         raise InvalidUpgrade("Connection", " ".join(connection))
 
-    upgrade: List[UpgradeProtocol] = sum(
+    upgrade: list[UpgradeProtocol] = sum(
         [parse_upgrade(value) for value in headers.get_all("Upgrade")], []
     )
 

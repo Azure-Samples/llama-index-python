@@ -2,6 +2,7 @@
 Unit tests for nltk.corpus.wordnet
 See also nltk/test/wordnet.doctest
 """
+
 import unittest
 
 from nltk.corpus import wordnet as wn
@@ -44,7 +45,7 @@ class WordnNetDemo(unittest.TestCase):
             S("brunch.n.01"),
             S("buffet.n.02"),
         ]
-        self.assertEqual(sorted(S("meal.n.1").hyponyms()[:5]), first_five_meal_hypo)
+        self.assertEqual(sorted(S("meal.n.1").hyponyms())[:5], first_five_meal_hypo)
         self.assertEqual(S("Austen.n.1").instance_hypernyms(), [S("writer.n.01")])
         first_five_composer_hypo = [
             S("ambrose.n.01"),
@@ -54,14 +55,14 @@ class WordnNetDemo(unittest.TestCase):
             S("beethoven.n.01"),
         ]
         self.assertEqual(
-            S("composer.n.1").instance_hyponyms()[:5], first_five_composer_hypo
+            sorted(S("composer.n.1").instance_hyponyms())[:5], first_five_composer_hypo
         )
 
         # Test root hyper-/hyponyms
         self.assertEqual(S("person.n.01").root_hypernyms(), [S("entity.n.01")])
         self.assertEqual(S("sail.v.01").root_hypernyms(), [S("travel.v.01")])
         self.assertEqual(
-            S("fall.v.12").root_hypernyms(), [S("act.v.01"), S("fall.v.17")]
+            sorted(S("fall.v.12").root_hypernyms()), [S("act.v.01"), S("fall.v.17")]
         )
 
     def test_derivationally_related_forms(self):
@@ -83,7 +84,7 @@ class WordnNetDemo(unittest.TestCase):
     def test_meronyms_holonyms(self):
         # Test meronyms, holonyms.
         self.assertEqual(
-            S("dog.n.01").member_holonyms(), [S("canis.n.01"), S("pack.n.06")]
+            sorted(S("dog.n.01").member_holonyms()), [S("canis.n.01"), S("pack.n.06")]
         )
         self.assertEqual(S("dog.n.01").part_meronyms(), [S("flag.n.07")])
 
@@ -91,16 +92,17 @@ class WordnNetDemo(unittest.TestCase):
         self.assertEqual(S("copilot.n.1").member_holonyms(), [S("crew.n.01")])
 
         self.assertEqual(
-            S("table.n.2").part_meronyms(),
+            sorted(S("table.n.2").part_meronyms()),
             [S("leg.n.03"), S("tabletop.n.01"), S("tableware.n.01")],
         )
         self.assertEqual(S("course.n.7").part_holonyms(), [S("meal.n.01")])
 
         self.assertEqual(
-            S("water.n.1").substance_meronyms(), [S("hydrogen.n.01"), S("oxygen.n.01")]
+            sorted(S("water.n.1").substance_meronyms()),
+            [S("hydrogen.n.01"), S("oxygen.n.01")],
         )
         self.assertEqual(
-            S("gin.n.1").substance_holonyms(),
+            sorted(S("gin.n.1").substance_holonyms()),
             [
                 S("gin_and_it.n.01"),
                 S("gin_and_tonic.n.01"),
@@ -122,7 +124,7 @@ class WordnNetDemo(unittest.TestCase):
         # Test misc relations.
         self.assertEqual(S("snore.v.1").entailments(), [S("sleep.v.01")])
         self.assertEqual(
-            S("heavy.a.1").similar_tos(),
+            sorted(S("heavy.a.1").similar_tos()),
             [
                 S("dense.s.03"),
                 S("doughy.s.01"),
@@ -161,10 +163,14 @@ class WordnNetDemo(unittest.TestCase):
     def test_in_topic_domains(self):
         # Test in domains.
         self.assertEqual(
-            S("computer_science.n.01").in_topic_domains()[0], S("access.n.05")
+            sorted(S("computer_science.n.01").in_topic_domains())[0], S("access.n.05")
         )
-        self.assertEqual(S("germany.n.01").in_region_domains()[23], S("trillion.n.02"))
-        self.assertEqual(S("slang.n.02").in_usage_domains()[1], S("airhead.n.01"))
+        self.assertEqual(
+            sorted(S("germany.n.01").in_region_domains())[23], S("trillion.n.02")
+        )
+        self.assertEqual(
+            sorted(S("slang.n.02").in_usage_domains())[1], S("airhead.n.01")
+        )
 
     def test_wordnet_similarities(self):
         # Path based similarities.

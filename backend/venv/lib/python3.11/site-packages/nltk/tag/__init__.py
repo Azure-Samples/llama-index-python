@@ -1,6 +1,6 @@
 # Natural Language Toolkit: Taggers
 #
-# Copyright (C) 2001-2023 NLTK Project
+# Copyright (C) 2001-2024 NLTK Project
 # Author: Edward Loper <edloper@gmail.com>
 #         Steven Bird <stevenbird1@gmail.com> (minor additions)
 # URL: <https://www.nltk.org/>
@@ -65,6 +65,8 @@ For more information, please consult chapter 5 of the NLTK Book.
 isort:skip_file
 """
 
+import functools
+
 from nltk.tag.api import TaggerI
 from nltk.tag.util import str2tuple, tuple2str, untag
 from nltk.tag.sequential import (
@@ -93,16 +95,17 @@ from nltk.tag.perceptron import PerceptronTagger
 
 from nltk.data import load, find
 
-RUS_PICKLE = (
-    "taggers/averaged_perceptron_tagger_ru/averaged_perceptron_tagger_ru.pickle"
-)
+
+PRETRAINED_TAGGERS = {
+    "rus": "taggers/averaged_perceptron_tagger_rus/",
+    "eng": "taggers/averaged_perceptron_tagger_eng/",
+}
 
 
+@functools.lru_cache
 def _get_tagger(lang=None):
     if lang == "rus":
-        tagger = PerceptronTagger(False)
-        ap_russian_model_loc = "file:" + str(find(RUS_PICKLE))
-        tagger.load(ap_russian_model_loc)
+        tagger = PerceptronTagger(lang=lang)
     else:
         tagger = PerceptronTagger()
     return tagger

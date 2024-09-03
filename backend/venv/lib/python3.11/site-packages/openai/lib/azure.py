@@ -10,6 +10,7 @@ import httpx
 from .._types import NOT_GIVEN, Omit, Timeout, NotGiven
 from .._utils import is_given, is_mapping
 from .._client import OpenAI, AsyncOpenAI
+from .._compat import model_copy
 from .._models import FinalRequestOptions
 from .._streaming import Stream, AsyncStream
 from .._exceptions import OpenAIError
@@ -79,8 +80,7 @@ class AzureOpenAI(BaseAzureClient[httpx.Client, Stream[Any]], OpenAI):
         default_query: Mapping[str, object] | None = None,
         http_client: httpx.Client | None = None,
         _strict_response_validation: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def __init__(
@@ -98,8 +98,7 @@ class AzureOpenAI(BaseAzureClient[httpx.Client, Stream[Any]], OpenAI):
         default_query: Mapping[str, object] | None = None,
         http_client: httpx.Client | None = None,
         _strict_response_validation: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def __init__(
@@ -117,8 +116,7 @@ class AzureOpenAI(BaseAzureClient[httpx.Client, Stream[Any]], OpenAI):
         default_query: Mapping[str, object] | None = None,
         http_client: httpx.Client | None = None,
         _strict_response_validation: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(
         self,
@@ -281,8 +279,10 @@ class AzureOpenAI(BaseAzureClient[httpx.Client, Stream[Any]], OpenAI):
         return None
 
     @override
-    def _prepare_options(self, options: FinalRequestOptions) -> None:
+    def _prepare_options(self, options: FinalRequestOptions) -> FinalRequestOptions:
         headers: dict[str, str | Omit] = {**options.headers} if is_given(options.headers) else {}
+
+        options = model_copy(options)
         options.headers = headers
 
         azure_ad_token = self._get_azure_ad_token()
@@ -296,7 +296,7 @@ class AzureOpenAI(BaseAzureClient[httpx.Client, Stream[Any]], OpenAI):
             # should never be hit
             raise ValueError("Unable to handle auth")
 
-        return super()._prepare_options(options)
+        return options
 
 
 class AsyncAzureOpenAI(BaseAzureClient[httpx.AsyncClient, AsyncStream[Any]], AsyncOpenAI):
@@ -318,8 +318,7 @@ class AsyncAzureOpenAI(BaseAzureClient[httpx.AsyncClient, AsyncStream[Any]], Asy
         default_query: Mapping[str, object] | None = None,
         http_client: httpx.AsyncClient | None = None,
         _strict_response_validation: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def __init__(
@@ -338,8 +337,7 @@ class AsyncAzureOpenAI(BaseAzureClient[httpx.AsyncClient, AsyncStream[Any]], Asy
         default_query: Mapping[str, object] | None = None,
         http_client: httpx.AsyncClient | None = None,
         _strict_response_validation: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def __init__(
@@ -358,8 +356,7 @@ class AsyncAzureOpenAI(BaseAzureClient[httpx.AsyncClient, AsyncStream[Any]], Asy
         default_query: Mapping[str, object] | None = None,
         http_client: httpx.AsyncClient | None = None,
         _strict_response_validation: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(
         self,
@@ -524,8 +521,10 @@ class AsyncAzureOpenAI(BaseAzureClient[httpx.AsyncClient, AsyncStream[Any]], Asy
         return None
 
     @override
-    async def _prepare_options(self, options: FinalRequestOptions) -> None:
+    async def _prepare_options(self, options: FinalRequestOptions) -> FinalRequestOptions:
         headers: dict[str, str | Omit] = {**options.headers} if is_given(options.headers) else {}
+
+        options = model_copy(options)
         options.headers = headers
 
         azure_ad_token = await self._get_azure_ad_token()
@@ -539,4 +538,4 @@ class AsyncAzureOpenAI(BaseAzureClient[httpx.AsyncClient, AsyncStream[Any]], Asy
             # should never be hit
             raise ValueError("Unable to handle auth")
 
-        return await super()._prepare_options(options)
+        return options

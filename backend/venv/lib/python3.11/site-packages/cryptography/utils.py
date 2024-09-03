@@ -25,6 +25,7 @@ DeprecatedIn37 = CryptographyDeprecationWarning
 DeprecatedIn40 = CryptographyDeprecationWarning
 DeprecatedIn41 = CryptographyDeprecationWarning
 DeprecatedIn42 = CryptographyDeprecationWarning
+DeprecatedIn43 = CryptographyDeprecationWarning
 
 
 def _check_bytes(name: str, value: bytes) -> None:
@@ -40,16 +41,11 @@ def _check_byteslike(name: str, value: bytes) -> None:
 
 
 def int_to_bytes(integer: int, length: int | None = None) -> bytes:
+    if length == 0:
+        raise ValueError("length argument can't be 0")
     return integer.to_bytes(
         length or (integer.bit_length() + 7) // 8 or 1, "big"
     )
-
-
-def _extract_buffer_length(obj: typing.Any) -> tuple[typing.Any, int]:
-    from cryptography.hazmat.bindings._rust import _openssl
-
-    buf = _openssl.ffi.from_buffer(obj)
-    return buf, int(_openssl.ffi.cast("uintptr_t", buf))
 
 
 class InterfaceNotImplemented(Exception):

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import urllib.parse
-from typing import Optional, Tuple
 
 from . import exceptions
 
@@ -24,7 +23,7 @@ class WebSocketURI:
         username: Available when the URI contains `User Information`_.
         password: Available when the URI contains `User Information`_.
 
-    .. _User Information: https://www.rfc-editor.org/rfc/rfc3986.html#section-3.2.1
+    .. _User Information: https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1
 
     """
 
@@ -33,8 +32,8 @@ class WebSocketURI:
     port: int
     path: str
     query: str
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
 
     @property
     def resource_name(self) -> str:
@@ -47,7 +46,7 @@ class WebSocketURI:
         return resource_name
 
     @property
-    def user_info(self) -> Optional[Tuple[str, str]]:
+    def user_info(self) -> tuple[str, str] | None:
         if self.username is None:
             return None
         assert self.password is not None
@@ -66,10 +65,10 @@ def parse_uri(uri: str) -> WebSocketURI:
         uri: WebSocket URI.
 
     Returns:
-        WebSocketURI: Parsed WebSocket URI.
+        Parsed WebSocket URI.
 
     Raises:
-        InvalidURI: if ``uri`` isn't a valid WebSocket URI.
+        InvalidURI: If ``uri`` isn't a valid WebSocket URI.
 
     """
     parsed = urllib.parse.urlparse(uri)

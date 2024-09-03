@@ -1,66 +1,64 @@
 import numpy as np
-
-from numpy import fix, isposinf, isneginf
+import numpy.core as nx
+import numpy.lib.ufunclike as ufl
 from numpy.testing import (
-    assert_, assert_equal, assert_array_equal, assert_raises
+    assert_, assert_equal, assert_array_equal, assert_warns, assert_raises
 )
 
 
 class TestUfunclike:
 
     def test_isposinf(self):
-        a = np.array([np.inf, -np.inf, np.nan, 0.0, 3.0, -3.0])
-        out = np.zeros(a.shape, bool)
-        tgt = np.array([True, False, False, False, False, False])
+        a = nx.array([nx.inf, -nx.inf, nx.nan, 0.0, 3.0, -3.0])
+        out = nx.zeros(a.shape, bool)
+        tgt = nx.array([True, False, False, False, False, False])
 
-        res = isposinf(a)
+        res = ufl.isposinf(a)
         assert_equal(res, tgt)
-        res = isposinf(a, out)
+        res = ufl.isposinf(a, out)
         assert_equal(res, tgt)
         assert_equal(out, tgt)
 
-        a = a.astype(np.complex128)
+        a = a.astype(np.complex_)
         with assert_raises(TypeError):
-            isposinf(a)
+            ufl.isposinf(a)
 
     def test_isneginf(self):
-        a = np.array([np.inf, -np.inf, np.nan, 0.0, 3.0, -3.0])
-        out = np.zeros(a.shape, bool)
-        tgt = np.array([False, True, False, False, False, False])
+        a = nx.array([nx.inf, -nx.inf, nx.nan, 0.0, 3.0, -3.0])
+        out = nx.zeros(a.shape, bool)
+        tgt = nx.array([False, True, False, False, False, False])
 
-        res = isneginf(a)
+        res = ufl.isneginf(a)
         assert_equal(res, tgt)
-        res = isneginf(a, out)
+        res = ufl.isneginf(a, out)
         assert_equal(res, tgt)
         assert_equal(out, tgt)
 
-        a = a.astype(np.complex128)
+        a = a.astype(np.complex_)
         with assert_raises(TypeError):
-            isneginf(a)
+            ufl.isneginf(a)
 
     def test_fix(self):
-        a = np.array([[1.0, 1.1, 1.5, 1.8], [-1.0, -1.1, -1.5, -1.8]])
-        out = np.zeros(a.shape, float)
-        tgt = np.array([[1., 1., 1., 1.], [-1., -1., -1., -1.]])
+        a = nx.array([[1.0, 1.1, 1.5, 1.8], [-1.0, -1.1, -1.5, -1.8]])
+        out = nx.zeros(a.shape, float)
+        tgt = nx.array([[1., 1., 1., 1.], [-1., -1., -1., -1.]])
 
-        res = fix(a)
+        res = ufl.fix(a)
         assert_equal(res, tgt)
-        res = fix(a, out)
+        res = ufl.fix(a, out)
         assert_equal(res, tgt)
         assert_equal(out, tgt)
-        assert_equal(fix(3.14), 3)
+        assert_equal(ufl.fix(3.14), 3)
 
     def test_fix_with_subclass(self):
-        class MyArray(np.ndarray):
+        class MyArray(nx.ndarray):
             def __new__(cls, data, metadata=None):
-                res = np.array(data, copy=True).view(cls)
+                res = nx.array(data, copy=True).view(cls)
                 res.metadata = metadata
                 return res
 
-            def __array_wrap__(self, obj, context=None, return_scalar=False):
-                if not isinstance(obj, MyArray):
-                    obj = obj.view(MyArray)
-                if obj.metadata is None:
+            def __array_wrap__(self, obj, context=None):
+                if isinstance(obj, MyArray):
                     obj.metadata = self.metadata
                 return obj
 
@@ -68,17 +66,17 @@ class TestUfunclike:
                 self.metadata = getattr(obj, 'metadata', None)
                 return self
 
-        a = np.array([1.1, -1.1])
+        a = nx.array([1.1, -1.1])
         m = MyArray(a, metadata='foo')
-        f = fix(m)
-        assert_array_equal(f, np.array([1, -1]))
+        f = ufl.fix(m)
+        assert_array_equal(f, nx.array([1, -1]))
         assert_(isinstance(f, MyArray))
         assert_equal(f.metadata, 'foo')
 
         # check 0d arrays don't decay to scalars
         m0d = m[0,...]
         m0d.metadata = 'bar'
-        f0d = fix(m0d)
+        f0d = ufl.fix(m0d)
         assert_(isinstance(f0d, MyArray))
         assert_equal(f0d.metadata, 'bar')
 

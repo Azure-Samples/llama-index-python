@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import zlib
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Sequence
 
 from .. import exceptions, frames
 from ..typing import ExtensionName, ExtensionParameter
@@ -36,7 +36,7 @@ class PerMessageDeflate(Extension):
         local_no_context_takeover: bool,
         remote_max_window_bits: int,
         local_max_window_bits: int,
-        compress_settings: Optional[Dict[Any, Any]] = None,
+        compress_settings: dict[Any, Any] | None = None,
     ) -> None:
         """
         Configure the Per-Message Deflate extension.
@@ -62,7 +62,8 @@ class PerMessageDeflate(Extension):
 
         if not self.local_no_context_takeover:
             self.encoder = zlib.compressobj(
-                wbits=-self.local_max_window_bits, **self.compress_settings
+                wbits=-self.local_max_window_bits,
+                **self.compress_settings,
             )
 
         # To handle continuation frames properly, we must keep track of
@@ -84,7 +85,7 @@ class PerMessageDeflate(Extension):
         self,
         frame: frames.Frame,
         *,
-        max_size: Optional[int] = None,
+        max_size: int | None = None,
     ) -> frames.Frame:
         """
         Decode an incoming frame.
@@ -156,7 +157,8 @@ class PerMessageDeflate(Extension):
             # Re-initialize per-message decoder.
             if self.local_no_context_takeover:
                 self.encoder = zlib.compressobj(
-                    wbits=-self.local_max_window_bits, **self.compress_settings
+                    wbits=-self.local_max_window_bits,
+                    **self.compress_settings,
                 )
 
         # Compress data.
@@ -174,14 +176,14 @@ class PerMessageDeflate(Extension):
 def _build_parameters(
     server_no_context_takeover: bool,
     client_no_context_takeover: bool,
-    server_max_window_bits: Optional[int],
-    client_max_window_bits: Optional[Union[int, bool]],
-) -> List[ExtensionParameter]:
+    server_max_window_bits: int | None,
+    client_max_window_bits: int | bool | None,
+) -> list[ExtensionParameter]:
     """
     Build a list of ``(name, value)`` pairs for some compression parameters.
 
     """
-    params: List[ExtensionParameter] = []
+    params: list[ExtensionParameter] = []
     if server_no_context_takeover:
         params.append(("server_no_context_takeover", None))
     if client_no_context_takeover:
@@ -197,7 +199,7 @@ def _build_parameters(
 
 def _extract_parameters(
     params: Sequence[ExtensionParameter], *, is_server: bool
-) -> Tuple[bool, bool, Optional[int], Optional[Union[int, bool]]]:
+) -> tuple[bool, bool, int | None, int | bool | None]:
     """
     Extract compression parameters from a list of ``(name, value)`` pairs.
 
@@ -207,8 +209,8 @@ def _extract_parameters(
     """
     server_no_context_takeover: bool = False
     client_no_context_takeover: bool = False
-    server_max_window_bits: Optional[int] = None
-    client_max_window_bits: Optional[Union[int, bool]] = None
+    server_max_window_bits: int | None = None
+    client_max_window_bits: int | bool | None = None
 
     for name, value in params:
         if name == "server_no_context_takeover":
@@ -262,20 +264,20 @@ class ClientPerMessageDeflateFactory(ClientExtensionFactory):
 
     Parameters behave as described in `section 7.1 of RFC 7692`_.
 
-    .. _section 7.1 of RFC 7692: https://www.rfc-editor.org/rfc/rfc7692.html#section-7.1
+    .. _section 7.1 of RFC 7692: https://datatracker.ietf.org/doc/html/rfc7692#section-7.1
 
     Set them to :obj:`True` to include them in the negotiation offer without a
     value or to an integer value to include them with this value.
 
     Args:
-        server_no_context_takeover: prevent server from using context takeover.
-        client_no_context_takeover: prevent client from using context takeover.
-        server_max_window_bits: maximum size of the server's LZ77 sliding window
+        server_no_context_takeover: Prevent server from using context takeover.
+        client_no_context_takeover: Prevent client from using context takeover.
+        server_max_window_bits: Maximum size of the server's LZ77 sliding window
             in bits, between 8 and 15.
-        client_max_window_bits: maximum size of the client's LZ77 sliding window
+        client_max_window_bits: Maximum size of the client's LZ77 sliding window
             in bits, between 8 and 15, or :obj:`True` to indicate support without
             setting a limit.
-        compress_settings: additional keyword arguments for :func:`zlib.compressobj`,
+        compress_settings: Additional keyword arguments for :func:`zlib.compressobj`,
             excluding ``wbits``.
 
     """
@@ -286,9 +288,9 @@ class ClientPerMessageDeflateFactory(ClientExtensionFactory):
         self,
         server_no_context_takeover: bool = False,
         client_no_context_takeover: bool = False,
-        server_max_window_bits: Optional[int] = None,
-        client_max_window_bits: Optional[Union[int, bool]] = True,
-        compress_settings: Optional[Dict[str, Any]] = None,
+        server_max_window_bits: int | None = None,
+        client_max_window_bits: int | bool | None = True,
+        compress_settings: dict[str, Any] | None = None,
     ) -> None:
         """
         Configure the Per-Message Deflate extension factory.
@@ -314,7 +316,7 @@ class ClientPerMessageDeflateFactory(ClientExtensionFactory):
         self.client_max_window_bits = client_max_window_bits
         self.compress_settings = compress_settings
 
-    def get_request_params(self) -> List[ExtensionParameter]:
+    def get_request_params(self) -> list[ExtensionParameter]:
         """
         Build request parameters.
 
@@ -433,7 +435,7 @@ class ClientPerMessageDeflateFactory(ClientExtensionFactory):
 
 
 def enable_client_permessage_deflate(
-    extensions: Optional[Sequence[ClientExtensionFactory]],
+    extensions: Sequence[ClientExtensionFactory] | None,
 ) -> Sequence[ClientExtensionFactory]:
     """
     Enable Per-Message Deflate with default settings in client extensions.
@@ -462,21 +464,21 @@ class ServerPerMessageDeflateFactory(ServerExtensionFactory):
 
     Parameters behave as described in `section 7.1 of RFC 7692`_.
 
-    .. _section 7.1 of RFC 7692: https://www.rfc-editor.org/rfc/rfc7692.html#section-7.1
+    .. _section 7.1 of RFC 7692: https://datatracker.ietf.org/doc/html/rfc7692#section-7.1
 
     Set them to :obj:`True` to include them in the negotiation offer without a
     value or to an integer value to include them with this value.
 
     Args:
-        server_no_context_takeover: prevent server from using context takeover.
-        client_no_context_takeover: prevent client from using context takeover.
-        server_max_window_bits: maximum size of the server's LZ77 sliding window
+        server_no_context_takeover: Prevent server from using context takeover.
+        client_no_context_takeover: Prevent client from using context takeover.
+        server_max_window_bits: Maximum size of the server's LZ77 sliding window
             in bits, between 8 and 15.
-        client_max_window_bits: maximum size of the client's LZ77 sliding window
+        client_max_window_bits: Maximum size of the client's LZ77 sliding window
             in bits, between 8 and 15.
-        compress_settings: additional keyword arguments for :func:`zlib.compressobj`,
+        compress_settings: Additional keyword arguments for :func:`zlib.compressobj`,
             excluding ``wbits``.
-        require_client_max_window_bits: do not enable compression at all if
+        require_client_max_window_bits: Do not enable compression at all if
             client doesn't advertise support for ``client_max_window_bits``;
             the default behavior is to enable compression without enforcing
             ``client_max_window_bits``.
@@ -489,9 +491,9 @@ class ServerPerMessageDeflateFactory(ServerExtensionFactory):
         self,
         server_no_context_takeover: bool = False,
         client_no_context_takeover: bool = False,
-        server_max_window_bits: Optional[int] = None,
-        client_max_window_bits: Optional[int] = None,
-        compress_settings: Optional[Dict[str, Any]] = None,
+        server_max_window_bits: int | None = None,
+        client_max_window_bits: int | None = None,
+        compress_settings: dict[str, Any] | None = None,
         require_client_max_window_bits: bool = False,
     ) -> None:
         """
@@ -524,7 +526,7 @@ class ServerPerMessageDeflateFactory(ServerExtensionFactory):
         self,
         params: Sequence[ExtensionParameter],
         accepted_extensions: Sequence[Extension],
-    ) -> Tuple[List[ExtensionParameter], PerMessageDeflate]:
+    ) -> tuple[list[ExtensionParameter], PerMessageDeflate]:
         """
         Process request parameters.
 
@@ -635,7 +637,7 @@ class ServerPerMessageDeflateFactory(ServerExtensionFactory):
 
 
 def enable_server_permessage_deflate(
-    extensions: Optional[Sequence[ServerExtensionFactory]],
+    extensions: Sequence[ServerExtensionFactory] | None,
 ) -> Sequence[ServerExtensionFactory]:
     """
     Enable Per-Message Deflate with default settings in server extensions.

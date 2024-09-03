@@ -1,23 +1,43 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import re
+import sys
 import warnings
-from typing import Callable, Generator, Optional
+from typing import Callable, Generator
 
 from . import datastructures, exceptions
+from .version import version as websockets_version
 
+
+__all__ = ["SERVER", "USER_AGENT", "Request", "Response"]
+
+
+PYTHON_VERSION = "{}.{}".format(*sys.version_info)
+
+# User-Agent header for HTTP requests.
+USER_AGENT = os.environ.get(
+    "WEBSOCKETS_USER_AGENT",
+    f"Python/{PYTHON_VERSION} websockets/{websockets_version}",
+)
+
+# Server header for HTTP responses.
+SERVER = os.environ.get(
+    "WEBSOCKETS_SERVER",
+    f"Python/{PYTHON_VERSION} websockets/{websockets_version}",
+)
 
 # Maximum total size of headers is around 128 * 8 KiB = 1 MiB.
-MAX_HEADERS = 128
+MAX_NUM_HEADERS = int(os.environ.get("WEBSOCKETS_MAX_NUM_HEADERS", "128"))
 
 # Limit request line and header lines. 8KiB is the most common default
 # configuration of popular HTTP servers.
-MAX_LINE = 8192
+MAX_LINE_LENGTH = int(os.environ.get("WEBSOCKETS_MAX_LINE_LENGTH", "8192"))
 
 # Support for HTTP response bodies is intended to read an error message
 # returned by a server. It isn't designed to perform large file transfers.
-MAX_BODY = 2**20  # 1 MiB
+MAX_BODY_SIZE = int(os.environ.get("WEBSOCKETS_MAX_BODY_SIZE", "1_048_576"))  # 1 MiB
 
 
 def d(value: bytes) -> str:
@@ -28,7 +48,7 @@ def d(value: bytes) -> str:
     return value.decode(errors="backslashreplace")
 
 
-# See https://www.rfc-editor.org/rfc/rfc7230.html#appendix-B.
+# See https://datatracker.ietf.org/doc/html/rfc7230#appendix-B.
 
 # Regex for validating header names.
 
@@ -62,10 +82,10 @@ class Request:
     headers: datastructures.Headers
     # body isn't useful is the context of this library.
 
-    _exception: Optional[Exception] = None
+    _exception: Exception | None = None
 
     @property
-    def exception(self) -> Optional[Exception]:  # pragma: no cover
+    def exception(self) -> Exception | None:  # pragma: no cover
         warnings.warn(
             "Request.exception is deprecated; "
             "use ServerProtocol.handshake_exc instead",
@@ -93,16 +113,16 @@ class Request:
         body, it may be read from the data stream after :meth:`parse` returns.
 
         Args:
-            read_line: generator-based coroutine that reads a LF-terminated
+            read_line: Generator-based coroutine that reads a LF-terminated
                 line or raises an exception if there isn't enough data
 
         Raises:
-            EOFError: if the connection is closed without a full HTTP request.
-            SecurityError: if the request exceeds a security limit.
-            ValueError: if the request isn't well formatted.
+            EOFError: If the connection is closed without a full HTTP request.
+            SecurityError: If the request exceeds a security limit.
+            ValueError: If the request isn't well formatted.
 
         """
-        # https://www.rfc-editor.org/rfc/rfc7230.html#section-3.1.1
+        # https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.1
 
         # Parsing is simple because fixed values are expected for method and
         # version and because path isn't checked. Since WebSocket software tends
@@ -126,7 +146,7 @@ class Request:
 
         headers = yield from parse_headers(read_line)
 
-        # https://www.rfc-editor.org/rfc/rfc7230.html#section-3.3.3
+        # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
 
         if "Transfer-Encoding" in headers:
             raise NotImplementedError("transfer codings aren't supported")
@@ -164,12 +184,12 @@ class Response:
     status_code: int
     reason_phrase: str
     headers: datastructures.Headers
-    body: Optional[bytes] = None
+    body: bytes | None = None
 
-    _exception: Optional[Exception] = None
+    _exception: Exception | None = None
 
     @property
-    def exception(self) -> Optional[Exception]:  # pragma: no cover
+    def exception(self) -> Exception | None:  # pragma: no cover
         warnings.warn(
             "Response.exception is deprecated; "
             "use ClientProtocol.handshake_exc instead",
@@ -193,21 +213,21 @@ class Response:
         characters. Other characters are represented with surrogate escapes.
 
         Args:
-            read_line: generator-based coroutine that reads a LF-terminated
+            read_line: Generator-based coroutine that reads a LF-terminated
                 line or raises an exception if there isn't enough data.
-            read_exact: generator-based coroutine that reads the requested
+            read_exact: Generator-based coroutine that reads the requested
                 bytes or raises an exception if there isn't enough data.
-            read_to_eof: generator-based coroutine that reads until the end
+            read_to_eof: Generator-based coroutine that reads until the end
                 of the stream.
 
         Raises:
-            EOFError: if the connection is closed without a full HTTP response.
-            SecurityError: if the response exceeds a security limit.
-            LookupError: if the response isn't well formatted.
-            ValueError: if the response isn't well formatted.
+            EOFError: If the connection is closed without a full HTTP response.
+            SecurityError: If the response exceeds a security limit.
+            LookupError: If the response isn't well formatted.
+            ValueError: If the response isn't well formatted.
 
         """
-        # https://www.rfc-editor.org/rfc/rfc7230.html#section-3.1.2
+        # https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.2
 
         try:
             status_line = yield from parse_line(read_line)
@@ -235,7 +255,7 @@ class Response:
 
         headers = yield from parse_headers(read_line)
 
-        # https://www.rfc-editor.org/rfc/rfc7230.html#section-3.3.3
+        # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
 
         if "Transfer-Encoding" in headers:
             raise NotImplementedError("transfer codings aren't supported")
@@ -245,7 +265,7 @@ class Response:
         if 100 <= status_code < 200 or status_code == 204 or status_code == 304:
             body = None
         else:
-            content_length: Optional[int]
+            content_length: int | None
             try:
                 # MultipleValuesError is sufficiently unlikely that we don't
                 # attempt to handle it. Instead we document that its parent
@@ -258,12 +278,12 @@ class Response:
 
             if content_length is None:
                 try:
-                    body = yield from read_to_eof(MAX_BODY)
+                    body = yield from read_to_eof(MAX_BODY_SIZE)
                 except RuntimeError:
                     raise exceptions.SecurityError(
-                        f"body too large: over {MAX_BODY} bytes"
+                        f"body too large: over {MAX_BODY_SIZE} bytes"
                     )
-            elif content_length > MAX_BODY:
+            elif content_length > MAX_BODY_SIZE:
                 raise exceptions.SecurityError(
                     f"body too large: {content_length} bytes"
                 )
@@ -295,21 +315,21 @@ def parse_headers(
     Non-ASCII characters are represented with surrogate escapes.
 
     Args:
-        read_line: generator-based coroutine that reads a LF-terminated line
+        read_line: Generator-based coroutine that reads a LF-terminated line
             or raises an exception if there isn't enough data.
 
     Raises:
-        EOFError: if the connection is closed without complete headers.
-        SecurityError: if the request exceeds a security limit.
-        ValueError: if the request isn't well formatted.
+        EOFError: If the connection is closed without complete headers.
+        SecurityError: If the request exceeds a security limit.
+        ValueError: If the request isn't well formatted.
 
     """
-    # https://www.rfc-editor.org/rfc/rfc7230.html#section-3.2
+    # https://datatracker.ietf.org/doc/html/rfc7230#section-3.2
 
     # We don't attempt to support obsolete line folding.
 
     headers = datastructures.Headers()
-    for _ in range(MAX_HEADERS + 1):
+    for _ in range(MAX_NUM_HEADERS + 1):
         try:
             line = yield from parse_line(read_line)
         except EOFError as exc:
@@ -346,19 +366,19 @@ def parse_line(
     CRLF is stripped from the return value.
 
     Args:
-        read_line: generator-based coroutine that reads a LF-terminated line
+        read_line: Generator-based coroutine that reads a LF-terminated line
             or raises an exception if there isn't enough data.
 
     Raises:
-        EOFError: if the connection is closed without a CRLF.
-        SecurityError: if the response exceeds a security limit.
+        EOFError: If the connection is closed without a CRLF.
+        SecurityError: If the response exceeds a security limit.
 
     """
     try:
-        line = yield from read_line(MAX_LINE)
+        line = yield from read_line(MAX_LINE_LENGTH)
     except RuntimeError:
         raise exceptions.SecurityError("line too long")
-    # Not mandatory but safe - https://www.rfc-editor.org/rfc/rfc7230.html#section-3.5
+    # Not mandatory but safe - https://datatracker.ietf.org/doc/html/rfc7230#section-3.5
     if not line.endswith(b"\r\n"):
         raise EOFError("line without CRLF")
     return line[:-2]

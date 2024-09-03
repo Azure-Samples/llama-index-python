@@ -11,14 +11,10 @@ from numpy.testing import (
 class TestMisc:
 
     def test_trimseq(self):
-        tgt = [1]
-        for num_trailing_zeros in range(5):
-            res = pu.trimseq([1] + [0] * num_trailing_zeros)
+        for i in range(5):
+            tgt = [1]
+            res = pu.trimseq([1] + [0]*5)
             assert_equal(res, tgt)
-
-    def test_trimseq_empty_input(self):
-        for empty_seq in [[], np.array([], dtype=np.int32)]:
-            assert_equal(pu.trimseq(empty_seq), empty_seq)
 
     def test_as_series(self):
         # check exceptions

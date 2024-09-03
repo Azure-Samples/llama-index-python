@@ -39,7 +39,7 @@ from numpy.ma.core import (
     bitwise_and as bitwise_and,
     bitwise_or as bitwise_or,
     bitwise_xor as bitwise_xor,
-    bool as bool,
+    bool_ as bool_,
     ceil as ceil,
     choose as choose,
     clip as clip,
@@ -230,4 +230,5 @@ from numpy.ma.extras import (
 )
 
 __all__: list[str]
+__path__: list[str]
 test: PytestTester

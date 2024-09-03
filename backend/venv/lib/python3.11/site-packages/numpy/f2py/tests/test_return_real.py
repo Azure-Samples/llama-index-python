@@ -6,7 +6,6 @@ from numpy import array
 from . import util
 
 
-@pytest.mark.slow
 class TestReturnReal(util.F2PyTest):
     def check_function(self, t, tname):
         if tname in ["t0", "t4", "s0", "s4"]:

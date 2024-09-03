@@ -12,7 +12,6 @@ np.matrixlib
 np.polynomial
 np.random
 np.rec
-np.strings
 np.testing
 np.version
 
@@ -20,7 +19,6 @@ np.lib.format
 np.lib.mixins
 np.lib.scimath
 np.lib.stride_tricks
-np.lib.array_utils
 np.ma.extras
 np.polynomial.chebyshev
 np.polynomial.hermite
@@ -40,6 +38,5 @@ np.lib.__all__
 np.ma.__all__
 np.random.__all__
 np.rec.__all__
-np.strings.__all__
 np.testing.__all__
 f2py.__all__

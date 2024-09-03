@@ -1,11 +1,13 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
+from numpy import dtype as dtype
+from numpy import ndarray as ndarray
 from numpy import uint64
 from numpy.random.bit_generator import BitGenerator, SeedSequence
-from numpy._typing import NDArray, _ArrayLikeInt_co
+from numpy._typing import _ArrayLikeInt_co
 
 class _SFC64Internal(TypedDict):
-    state: NDArray[uint64]
+    state: ndarray[Any, dtype[uint64]]
 
 class _SFC64State(TypedDict):
     bit_generator: str

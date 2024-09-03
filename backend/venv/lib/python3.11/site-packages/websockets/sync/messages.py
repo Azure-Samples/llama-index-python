@@ -3,9 +3,9 @@ from __future__ import annotations
 import codecs
 import queue
 import threading
-from typing import Iterator, List, Optional, cast
+from typing import Iterator, cast
 
-from ..frames import Frame, Opcode
+from ..frames import OP_BINARY, OP_CONT, OP_TEXT, Frame
 from ..typing import Data
 
 
@@ -25,8 +25,11 @@ class Assembler:
         # primitives provided by the threading and queue modules.
         self.mutex = threading.Lock()
 
-        # We create a latch with two events to ensure proper interleaving of
-        # writing and reading messages.
+        # We create a latch with two events to synchronize the production of
+        # frames and the consumption of messages (or frames) without a buffer.
+        # This design requires a switch between the library thread and the user
+        # thread for each message; that shouldn't be a performance bottleneck.
+
         # put() sets this event to tell get() that a message can be fetched.
         self.message_complete = threading.Event()
         # get() sets this event to let put() that the message was fetched.
@@ -38,25 +41,24 @@ class Assembler:
         self.put_in_progress = False
 
         # Decoder for text frames, None for binary frames.
-        self.decoder: Optional[codecs.IncrementalDecoder] = None
+        self.decoder: codecs.IncrementalDecoder | None = None
 
         # Buffer of frames belonging to the same message.
-        self.chunks: List[Data] = []
+        self.chunks: list[Data] = []
 
         # When switching from "buffering" to "streaming", we use a thread-safe
         # queue for transferring frames from the writing thread (library code)
         # to the reading thread (user code). We're buffering when chunks_queue
         # is None and streaming when it's a SimpleQueue. None is a sentinel
-        # value marking the end of the stream, superseding message_complete.
+        # value marking the end of the message, superseding message_complete.
 
         # Stream data from frames belonging to the same message.
-        # Remove quotes around type when dropping Python < 3.9.
-        self.chunks_queue: Optional["queue.SimpleQueue[Optional[Data]]"] = None
+        self.chunks_queue: queue.SimpleQueue[Data | None] | None = None
 
-        # This flag marks the end of the stream.
+        # This flag marks the end of the connection.
         self.closed = False
 
-    def get(self, timeout: Optional[float] = None) -> Data:
+    def get(self, timeout: float | None = None) -> Data:
         """
         Read the next message.
 
@@ -72,8 +74,10 @@ class Assembler:
 
         Raises:
             EOFError: If the stream of frames has ended.
-            RuntimeError: If two threads run :meth:`get` or :meth:``get_iter`
+            RuntimeError: If two threads run :meth:`get` or :meth:`get_iter`
                 concurrently.
+            TimeoutError: If a timeout is provided and elapses before a
+                complete message is received.
 
         """
         with self.mutex:
@@ -81,7 +85,7 @@ class Assembler:
                 raise EOFError("stream of frames ended")
 
             if self.get_in_progress:
-                raise RuntimeError("get or get_iter is already running")
+                raise RuntimeError("get() or get_iter() is already running")
 
             self.get_in_progress = True
 
@@ -108,11 +112,11 @@ class Assembler:
             # mypy cannot figure out that chunks have the proper type.
             message: Data = joiner.join(self.chunks)  # type: ignore
 
-            assert not self.message_fetched.is_set()
-            self.message_fetched.set()
-
             self.chunks = []
             assert self.chunks_queue is None
+
+            assert not self.message_fetched.is_set()
+            self.message_fetched.set()
 
             return message
 
@@ -131,7 +135,7 @@ class Assembler:
 
         Raises:
             EOFError: If the stream of frames has ended.
-            RuntimeError: If two threads run :meth:`get` or :meth:``get_iter`
+            RuntimeError: If two threads run :meth:`get` or :meth:`get_iter`
                 concurrently.
 
         """
@@ -140,13 +144,13 @@ class Assembler:
                 raise EOFError("stream of frames ended")
 
             if self.get_in_progress:
-                raise RuntimeError("get or get_iter is already running")
+                raise RuntimeError("get() or get_iter() is already running")
 
             chunks = self.chunks
             self.chunks = []
             self.chunks_queue = cast(
                 # Remove quotes around type when dropping Python < 3.9.
-                "queue.SimpleQueue[Optional[Data]]",
+                "queue.SimpleQueue[Data | None]",
                 queue.SimpleQueue(),
             )
 
@@ -159,36 +163,35 @@ class Assembler:
             self.get_in_progress = True
 
         # Locking with get_in_progress ensures only one thread can get here.
-        yield from chunks
-        while True:
-            chunk = self.chunks_queue.get()
-            if chunk is None:
-                break
+        chunk: Data | None
+        for chunk in chunks:
+            yield chunk
+        while (chunk := self.chunks_queue.get()) is not None:
             yield chunk
 
         with self.mutex:
             self.get_in_progress = False
 
-            assert self.message_complete.is_set()
-            self.message_complete.clear()
-
             # get_iter() was unblocked by close() rather than put().
             if self.closed:
                 raise EOFError("stream of frames ended")
 
-            assert not self.message_fetched.is_set()
-            self.message_fetched.set()
+            assert self.message_complete.is_set()
+            self.message_complete.clear()
 
             assert self.chunks == []
             self.chunks_queue = None
+
+            assert not self.message_fetched.is_set()
+            self.message_fetched.set()
 
     def put(self, frame: Frame) -> None:
         """
         Add ``frame`` to the next message.
 
         When ``frame`` is the final frame in a message, :meth:`put` waits until
-        the message is fetched, either by calling :meth:`get` or by fully
-        consuming the return value of :meth:`get_iter`.
+        the message is fetched, which can be achieved by calling :meth:`get` or
+        by fully consuming the return value of :meth:`get_iter`.
 
         :meth:`put` assumes that the stream of frames respects the protocol. If
         it doesn't, the behavior is undefined.
@@ -205,15 +208,12 @@ class Assembler:
             if self.put_in_progress:
                 raise RuntimeError("put is already running")
 
-            if frame.opcode is Opcode.TEXT:
+            if frame.opcode is OP_TEXT:
                 self.decoder = UTF8Decoder(errors="strict")
-            elif frame.opcode is Opcode.BINARY:
+            elif frame.opcode is OP_BINARY:
                 self.decoder = None
-            elif frame.opcode is Opcode.CONT:
-                pass
             else:
-                # Ignore control frames.
-                return
+                assert frame.opcode is OP_CONT
 
             data: Data
             if self.decoder is not None:
@@ -242,17 +242,18 @@ class Assembler:
             self.put_in_progress = True
 
         # Release the lock to allow get() to run and eventually set the event.
+        # Locking with put_in_progress ensures only one coroutine can get here.
         self.message_fetched.wait()
 
         with self.mutex:
             self.put_in_progress = False
 
-            assert self.message_fetched.is_set()
-            self.message_fetched.clear()
-
             # put() was unblocked by close() rather than get() or get_iter().
             if self.closed:
                 raise EOFError("stream of frames ended")
+
+            assert self.message_fetched.is_set()
+            self.message_fetched.clear()
 
             self.decoder = None
 

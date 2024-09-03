@@ -3,9 +3,10 @@ from __future__ import annotations
 import dataclasses
 import enum
 import io
+import os
 import secrets
 import struct
-from typing import Callable, Generator, Optional, Sequence, Tuple
+from typing import Callable, Generator, Sequence
 
 from . import exceptions, extensions
 from .typing import Data
@@ -146,6 +147,9 @@ class Frame:
     rsv2: bool = False
     rsv3: bool = False
 
+    # Configure if you want to see more in logs. Should be a multiple of 3.
+    MAX_LOG_SIZE = int(os.environ.get("WEBSOCKETS_MAX_LOG_SIZE", "75"))
+
     def __str__(self) -> str:
         """
         Return a human-readable representation of a frame.
@@ -163,8 +167,9 @@ class Frame:
             # We'll show at most the first 16 bytes and the last 8 bytes.
             # Encode just what we need, plus two dummy bytes to elide later.
             binary = self.data
-            if len(binary) > 25:
-                binary = b"".join([binary[:16], b"\x00\x00", binary[-8:]])
+            if len(binary) > self.MAX_LOG_SIZE // 3:
+                cut = (self.MAX_LOG_SIZE // 3 - 1) // 3  # by default cut = 8
+                binary = b"".join([binary[: 2 * cut], b"\x00\x00", binary[-cut:]])
             data = " ".join(f"{byte:02x}" for byte in binary)
         elif self.opcode is OP_CLOSE:
             data = str(Close.parse(self.data))
@@ -179,15 +184,17 @@ class Frame:
                 coding = "text"
             except (UnicodeDecodeError, AttributeError):
                 binary = self.data
-                if len(binary) > 25:
-                    binary = b"".join([binary[:16], b"\x00\x00", binary[-8:]])
+                if len(binary) > self.MAX_LOG_SIZE // 3:
+                    cut = (self.MAX_LOG_SIZE // 3 - 1) // 3  # by default cut = 8
+                    binary = b"".join([binary[: 2 * cut], b"\x00\x00", binary[-cut:]])
                 data = " ".join(f"{byte:02x}" for byte in binary)
                 coding = "binary"
         else:
             data = "''"
 
-        if len(data) > 75:
-            data = data[:48] + "..." + data[-24:]
+        if len(data) > self.MAX_LOG_SIZE:
+            cut = self.MAX_LOG_SIZE // 3 - 1  # by default cut = 24
+            data = data[: 2 * cut] + "..." + data[-cut:]
 
         metadata = ", ".join(filter(None, [coding, length, non_final]))
 
@@ -199,8 +206,8 @@ class Frame:
         read_exact: Callable[[int], Generator[None, None, bytes]],
         *,
         mask: bool,
-        max_size: Optional[int] = None,
-        extensions: Optional[Sequence[extensions.Extension]] = None,
+        max_size: int | None = None,
+        extensions: Sequence[extensions.Extension] | None = None,
     ) -> Generator[None, None, Frame]:
         """
         Parse a WebSocket frame.
@@ -208,18 +215,18 @@ class Frame:
         This is a generator-based coroutine.
 
         Args:
-            read_exact: generator-based coroutine that reads the requested
+            read_exact: Generator-based coroutine that reads the requested
                 bytes or raises an exception if there isn't enough data.
-            mask: whether the frame should be masked i.e. whether the read
+            mask: Whether the frame should be masked i.e. whether the read
                 happens on the server side.
-            max_size: maximum payload size in bytes.
-            extensions: list of extensions, applied in reverse order.
+            max_size: Maximum payload size in bytes.
+            extensions: List of extensions, applied in reverse order.
 
         Raises:
-            EOFError: if the connection is closed without a full WebSocket frame.
-            UnicodeDecodeError: if the frame contains invalid UTF-8.
-            PayloadTooBig: if the frame's payload size exceeds ``max_size``.
-            ProtocolError: if the frame contains incorrect values.
+            EOFError: If the connection is closed without a full WebSocket frame.
+            UnicodeDecodeError: If the frame contains invalid UTF-8.
+            PayloadTooBig: If the frame's payload size exceeds ``max_size``.
+            ProtocolError: If the frame contains incorrect values.
 
         """
         # Read the header.
@@ -274,18 +281,18 @@ class Frame:
         self,
         *,
         mask: bool,
-        extensions: Optional[Sequence[extensions.Extension]] = None,
+        extensions: Sequence[extensions.Extension] | None = None,
     ) -> bytes:
         """
         Serialize a WebSocket frame.
 
         Args:
-            mask: whether the frame should be masked i.e. whether the write
+            mask: Whether the frame should be masked i.e. whether the write
                 happens on the client side.
-            extensions: list of extensions, applied in order.
+            extensions: List of extensions, applied in order.
 
         Raises:
-            ProtocolError: if the frame contains incorrect values.
+            ProtocolError: If the frame contains incorrect values.
 
         """
         self.check()
@@ -334,7 +341,7 @@ class Frame:
         Check that reserved bits and opcode have acceptable values.
 
         Raises:
-            ProtocolError: if a reserved bit or the opcode is invalid.
+            ProtocolError: If a reserved bit or the opcode is invalid.
 
         """
         if self.rsv1 or self.rsv2 or self.rsv3:
@@ -347,7 +354,7 @@ class Frame:
                 raise exceptions.ProtocolError("fragmented control frame")
 
 
-def prepare_data(data: Data) -> Tuple[int, bytes]:
+def prepare_data(data: Data) -> tuple[int, bytes]:
     """
     Convert a string or byte-like object to an opcode and a bytes-like object.
 
@@ -360,11 +367,11 @@ def prepare_data(data: Data) -> Tuple[int, bytes]:
     object.
 
     Raises:
-        TypeError: if ``data`` doesn't have a supported type.
+        TypeError: If ``data`` doesn't have a supported type.
 
     """
     if isinstance(data, str):
-        return OP_TEXT, data.encode("utf-8")
+        return OP_TEXT, data.encode()
     elif isinstance(data, BytesLike):
         return OP_BINARY, data
     else:
@@ -383,11 +390,11 @@ def prepare_ctrl(data: Data) -> bytes:
     If ``data`` is a bytes-like object, return a :class:`bytes` object.
 
     Raises:
-        TypeError: if ``data`` doesn't have a supported type.
+        TypeError: If ``data`` doesn't have a supported type.
 
     """
     if isinstance(data, str):
-        return data.encode("utf-8")
+        return data.encode()
     elif isinstance(data, BytesLike):
         return bytes(data)
     else:
@@ -432,16 +439,16 @@ class Close:
         Parse the payload of a close frame.
 
         Args:
-            data: payload of the close frame.
+            data: Payload of the close frame.
 
         Raises:
-            ProtocolError: if data is ill-formed.
-            UnicodeDecodeError: if the reason isn't valid UTF-8.
+            ProtocolError: If data is ill-formed.
+            UnicodeDecodeError: If the reason isn't valid UTF-8.
 
         """
         if len(data) >= 2:
             (code,) = struct.unpack("!H", data[:2])
-            reason = data[2:].decode("utf-8")
+            reason = data[2:].decode()
             close = cls(code, reason)
             close.check()
             return close
@@ -456,14 +463,14 @@ class Close:
 
         """
         self.check()
-        return struct.pack("!H", self.code) + self.reason.encode("utf-8")
+        return struct.pack("!H", self.code) + self.reason.encode()
 
     def check(self) -> None:
         """
         Check that the close code has a valid value for a close frame.
 
         Raises:
-            ProtocolError: if the close code is invalid.
+            ProtocolError: If the close code is invalid.
 
         """
         if not (self.code in EXTERNAL_CLOSE_CODES or 3000 <= self.code < 5000):

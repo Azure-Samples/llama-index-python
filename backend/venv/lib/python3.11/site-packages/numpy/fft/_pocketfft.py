@@ -31,13 +31,11 @@ __all__ = ['fft', 'ifft', 'rfft', 'irfft', 'hfft', 'ihfft', 'rfftn',
            'irfftn', 'rfft2', 'irfft2', 'fft2', 'ifft2', 'fftn', 'ifftn']
 
 import functools
-import warnings
 
-from numpy.lib.array_utils import normalize_axis_index
-from numpy._core import (asarray, empty, zeros, swapaxes, result_type,
-                         conjugate, take, sqrt, reciprocal)
-from . import _pocketfft_umath as pfu
-from numpy._core import overrides
+from numpy.core import asarray, zeros, swapaxes, conjugate, take, sqrt
+from . import _pocketfft_internal as pfi
+from numpy.core.multiarray import normalize_axis_index
+from numpy.core import overrides
 
 
 array_function_dispatch = functools.partial(
@@ -48,50 +46,61 @@ array_function_dispatch = functools.partial(
 # divided. This replaces the original, more intuitive 'fct` parameter to avoid
 # divisions by zero (or alternatively additional checks) in the case of
 # zero-length axes during its computation.
-def _raw_fft(a, n, axis, is_real, is_forward, norm, out=None):
+def _raw_fft(a, n, axis, is_real, is_forward, inv_norm):
+    axis = normalize_axis_index(axis, a.ndim)
+    if n is None:
+        n = a.shape[axis]
+
+    fct = 1/inv_norm
+
+    if a.shape[axis] != n:
+        s = list(a.shape)
+        index = [slice(None)]*len(s)
+        if s[axis] > n:
+            index[axis] = slice(0, n)
+            a = a[tuple(index)]
+        else:
+            index[axis] = slice(0, s[axis])
+            s[axis] = n
+            z = zeros(s, a.dtype.char)
+            z[tuple(index)] = a
+            a = z
+
+    if axis == a.ndim-1:
+        r = pfi.execute(a, is_real, is_forward, fct)
+    else:
+        a = swapaxes(a, axis, -1)
+        r = pfi.execute(a, is_real, is_forward, fct)
+        r = swapaxes(r, axis, -1)
+    return r
+
+
+def _get_forward_norm(n, norm):
     if n < 1:
         raise ValueError(f"Invalid number of FFT data points ({n}) specified.")
 
-    # Calculate the normalization factor, passing in the array dtype to
-    # avoid precision loss in the possible sqrt or reciprocal.
-    if not is_forward:
-        norm = _swap_direction(norm)
-
-    real_dtype = result_type(a.real.dtype, 1.0)
     if norm is None or norm == "backward":
-        fct = 1
+        return 1
     elif norm == "ortho":
-        fct = reciprocal(sqrt(n, dtype=real_dtype))
+        return sqrt(n)
     elif norm == "forward":
-        fct = reciprocal(n, dtype=real_dtype)
-    else:
-        raise ValueError(f'Invalid norm value {norm}; should be "backward",'
-                         '"ortho" or "forward".')
+        return n
+    raise ValueError(f'Invalid norm value {norm}; should be "backward",'
+                     '"ortho" or "forward".')
 
-    n_out = n
-    if is_real:
-        if is_forward:
-            ufunc = pfu.rfft_n_even if n % 2 == 0 else pfu.rfft_n_odd
-            n_out = n // 2 + 1
-        else:
-            ufunc = pfu.irfft
-    else:
-        ufunc = pfu.fft if is_forward else pfu.ifft
 
-    axis = normalize_axis_index(axis, a.ndim)
+def _get_backward_norm(n, norm):
+    if n < 1:
+        raise ValueError(f"Invalid number of FFT data points ({n}) specified.")
 
-    if out is None:
-        if is_real and not is_forward:  # irfft, complex in, real output.
-            out_dtype = real_dtype
-        else:  # Others, complex output.
-            out_dtype = result_type(a.dtype, 1j)
-        out = empty(a.shape[:axis] + (n_out,) + a.shape[axis+1:],
-                    dtype=out_dtype)
-    elif ((shape := getattr(out, "shape", None)) is not None
-          and (len(shape) != a.ndim or shape[axis] != n_out)):
-        raise ValueError("output array has wrong shape.")
-
-    return ufunc(a, fct, axes=[(axis,), (), (axis,)], out=out)
+    if norm is None or norm == "backward":
+        return n
+    elif norm == "ortho":
+        return sqrt(n)
+    elif norm == "forward":
+        return 1
+    raise ValueError(f'Invalid norm value {norm}; should be "backward", '
+                     '"ortho" or "forward".')
 
 
 _SWAP_DIRECTION_MAP = {"backward": "forward", None: "forward",
@@ -106,12 +115,12 @@ def _swap_direction(norm):
                          '"ortho" or "forward".') from None
 
 
-def _fft_dispatcher(a, n=None, axis=None, norm=None, out=None):
-    return (a, out)
+def _fft_dispatcher(a, n=None, axis=None, norm=None):
+    return (a,)
 
 
 @array_function_dispatch(_fft_dispatcher)
-def fft(a, n=None, axis=-1, norm=None, out=None):
+def fft(a, n=None, axis=-1, norm=None):
     """
     Compute the one-dimensional discrete Fourier Transform.
 
@@ -141,11 +150,6 @@ def fft(a, n=None, axis=-1, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -207,12 +211,13 @@ def fft(a, n=None, axis=-1, norm=None, out=None):
     a = asarray(a)
     if n is None:
         n = a.shape[axis]
-    output = _raw_fft(a, n, axis, False, True, norm, out)
+    inv_norm = _get_forward_norm(n, norm)
+    output = _raw_fft(a, n, axis, False, True, inv_norm)
     return output
 
 
 @array_function_dispatch(_fft_dispatcher)
-def ifft(a, n=None, axis=-1, norm=None, out=None):
+def ifft(a, n=None, axis=-1, norm=None):
     """
     Compute the one-dimensional inverse discrete Fourier Transform.
 
@@ -257,12 +262,6 @@ def ifft(a, n=None, axis=-1, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -313,12 +312,13 @@ def ifft(a, n=None, axis=-1, norm=None, out=None):
     a = asarray(a)
     if n is None:
         n = a.shape[axis]
-    output = _raw_fft(a, n, axis, False, False, norm, out=out)
+    inv_norm = _get_backward_norm(n, norm)
+    output = _raw_fft(a, n, axis, False, False, inv_norm)
     return output
 
 
 @array_function_dispatch(_fft_dispatcher)
-def rfft(a, n=None, axis=-1, norm=None, out=None):
+def rfft(a, n=None, axis=-1, norm=None):
     """
     Compute the one-dimensional discrete Fourier Transform for real input.
 
@@ -348,12 +348,6 @@ def rfft(a, n=None, axis=-1, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -411,12 +405,13 @@ def rfft(a, n=None, axis=-1, norm=None, out=None):
     a = asarray(a)
     if n is None:
         n = a.shape[axis]
-    output = _raw_fft(a, n, axis, True, True, norm, out=out)
+    inv_norm = _get_forward_norm(n, norm)
+    output = _raw_fft(a, n, axis, True, True, inv_norm)
     return output
 
 
 @array_function_dispatch(_fft_dispatcher)
-def irfft(a, n=None, axis=-1, norm=None, out=None):
+def irfft(a, n=None, axis=-1, norm=None):
     """
     Computes the inverse of `rfft`.
 
@@ -455,12 +450,6 @@ def irfft(a, n=None, axis=-1, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -520,12 +509,13 @@ def irfft(a, n=None, axis=-1, norm=None, out=None):
     a = asarray(a)
     if n is None:
         n = (a.shape[axis] - 1) * 2
-    output = _raw_fft(a, n, axis, True, False, norm, out=out)
+    inv_norm = _get_backward_norm(n, norm)
+    output = _raw_fft(a, n, axis, True, False, inv_norm)
     return output
 
 
 @array_function_dispatch(_fft_dispatcher)
-def hfft(a, n=None, axis=-1, norm=None, out=None):
+def hfft(a, n=None, axis=-1, norm=None):
     """
     Compute the FFT of a signal that has Hermitian symmetry, i.e., a real
     spectrum.
@@ -554,12 +544,6 @@ def hfft(a, n=None, axis=-1, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -624,12 +608,12 @@ def hfft(a, n=None, axis=-1, norm=None, out=None):
     if n is None:
         n = (a.shape[axis] - 1) * 2
     new_norm = _swap_direction(norm)
-    output = irfft(conjugate(a), n, axis, norm=new_norm, out=None)
+    output = irfft(conjugate(a), n, axis, norm=new_norm)
     return output
 
 
 @array_function_dispatch(_fft_dispatcher)
-def ihfft(a, n=None, axis=-1, norm=None, out=None):
+def ihfft(a, n=None, axis=-1, norm=None):
     """
     Compute the inverse FFT of a signal that has Hermitian symmetry.
 
@@ -656,12 +640,6 @@ def ihfft(a, n=None, axis=-1, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -697,63 +675,45 @@ def ihfft(a, n=None, axis=-1, norm=None, out=None):
     if n is None:
         n = a.shape[axis]
     new_norm = _swap_direction(norm)
-    out = rfft(a, n, axis, norm=new_norm, out=out)
-    return conjugate(out, out=out)
+    output = conjugate(rfft(a, n, axis, norm=new_norm))
+    return output
 
 
 def _cook_nd_args(a, s=None, axes=None, invreal=0):
     if s is None:
-        shapeless = True
+        shapeless = 1
         if axes is None:
             s = list(a.shape)
         else:
             s = take(a.shape, axes)
     else:
-        shapeless = False
+        shapeless = 0
     s = list(s)
     if axes is None:
-        if not shapeless:
-            msg = ("`axes` should not be `None` if `s` is not `None` "
-                   "(Deprecated in NumPy 2.0). In a future version of NumPy, "
-                   "this will raise an error and `s[i]` will correspond to "
-                   "the size along the transformed axis specified by "
-                   "`axes[i]`. To retain current behaviour, pass a sequence "
-                   "[0, ..., k-1] to `axes` for an array of dimension k.")
-            warnings.warn(msg, DeprecationWarning, stacklevel=3)
         axes = list(range(-len(s), 0))
     if len(s) != len(axes):
         raise ValueError("Shape and axes have different lengths.")
     if invreal and shapeless:
         s[-1] = (a.shape[axes[-1]] - 1) * 2
-    if None in s:
-        msg = ("Passing an array containing `None` values to `s` is "
-               "deprecated in NumPy 2.0 and will raise an error in "
-               "a future version of NumPy. To use the default behaviour "
-               "of the corresponding 1-D transform, pass the value matching "
-               "the default for its `n` parameter. To use the default "
-               "behaviour for every axis, the `s` argument can be omitted.")
-        warnings.warn(msg, DeprecationWarning, stacklevel=3)
-    # use the whole input array along axis `i` if `s[i] == -1`
-    s = [a.shape[_a] if _s == -1 else _s for _s, _a in zip(s, axes)]
     return s, axes
 
 
-def _raw_fftnd(a, s=None, axes=None, function=fft, norm=None, out=None):
+def _raw_fftnd(a, s=None, axes=None, function=fft, norm=None):
     a = asarray(a)
     s, axes = _cook_nd_args(a, s, axes)
     itl = list(range(len(axes)))
     itl.reverse()
     for ii in itl:
-        a = function(a, n=s[ii], axis=axes[ii], norm=norm, out=out)
+        a = function(a, n=s[ii], axis=axes[ii], norm=norm)
     return a
 
 
-def _fftn_dispatcher(a, s=None, axes=None, norm=None, out=None):
-    return (a, out)
+def _fftn_dispatcher(a, s=None, axes=None, norm=None):
+    return (a,)
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def fftn(a, s=None, axes=None, norm=None, out=None):
+def fftn(a, s=None, axes=None, norm=None):
     """
     Compute the N-dimensional discrete Fourier Transform.
 
@@ -770,37 +730,14 @@ def fftn(a, s=None, axes=None, norm=None, out=None):
         (``s[0]`` refers to axis 0, ``s[1]`` to axis 1, etc.).
         This corresponds to ``n`` for ``fft(x, n)``.
         Along any axis, if the given shape is smaller than that of the input,
-        the input is cropped. If it is larger, the input is padded with zeros.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        If `s` is not given, the shape of the input along the axes specified
+        the input is cropped.  If it is larger, the input is padded with zeros.
+        if `s` is not given, the shape of the input along the axes specified
         by `axes` is used.
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
         Axes over which to compute the FFT.  If not given, the last ``len(s)``
         axes are used, or all axes if `s` is also not specified.
         Repeated indices in `axes` means that the transform over that axis is
         performed multiple times.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must be explicitly specified too.
-
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -811,13 +748,6 @@ def fftn(a, s=None, axes=None, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for all axes (and hence is
-        incompatible with passing in all but the trivial ``s``).
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -882,11 +812,11 @@ def fftn(a, s=None, axes=None, norm=None, out=None):
     >>> plt.show()
 
     """
-    return _raw_fftnd(a, s, axes, fft, norm, out=out)
+    return _raw_fftnd(a, s, axes, fft, norm)
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def ifftn(a, s=None, axes=None, norm=None, out=None):
+def ifftn(a, s=None, axes=None, norm=None):
     """
     Compute the N-dimensional inverse discrete Fourier Transform.
 
@@ -912,37 +842,14 @@ def ifftn(a, s=None, axes=None, norm=None, out=None):
         (``s[0]`` refers to axis 0, ``s[1]`` to axis 1, etc.).
         This corresponds to ``n`` for ``ifft(x, n)``.
         Along any axis, if the given shape is smaller than that of the input,
-        the input is cropped. If it is larger, the input is padded with zeros.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        If `s` is not given, the shape of the input along the axes specified
-        by `axes` is used. See notes for issue on `ifft` zero padding.
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
+        the input is cropped.  If it is larger, the input is padded with zeros.
+        if `s` is not given, the shape of the input along the axes specified
+        by `axes` is used.  See notes for issue on `ifft` zero padding.
     axes : sequence of ints, optional
         Axes over which to compute the IFFT.  If not given, the last ``len(s)``
         axes are used, or all axes if `s` is also not specified.
         Repeated indices in `axes` means that the inverse transform over that
         axis is performed multiple times.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must be explicitly specified too.
-
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -953,13 +860,6 @@ def ifftn(a, s=None, axes=None, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for all axes (and hence is
-        incompatible with passing in all but the trivial ``s``).
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1015,11 +915,11 @@ def ifftn(a, s=None, axes=None, norm=None, out=None):
     >>> plt.show()
 
     """
-    return _raw_fftnd(a, s, axes, ifft, norm, out=out)
+    return _raw_fftnd(a, s, axes, ifft, norm)
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def fft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+def fft2(a, s=None, axes=(-2, -1), norm=None):
     """
     Compute the 2-dimensional discrete Fourier Transform.
 
@@ -1037,37 +937,14 @@ def fft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         (``s[0]`` refers to axis 0, ``s[1]`` to axis 1, etc.).
         This corresponds to ``n`` for ``fft(x, n)``.
         Along each axis, if the given shape is smaller than that of the input,
-        the input is cropped. If it is larger, the input is padded with zeros.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        If `s` is not given, the shape of the input along the axes specified
+        the input is cropped.  If it is larger, the input is padded with zeros.
+        if `s` is not given, the shape of the input along the axes specified
         by `axes` is used.
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
         Axes over which to compute the FFT.  If not given, the last two
         axes are used.  A repeated index in `axes` means the transform over
         that axis is performed multiple times.  A one-element sequence means
-        that a one-dimensional FFT is performed. Default: ``(-2, -1)``.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must not be ``None``.
-
+        that a one-dimensional FFT is performed.
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -1078,13 +955,6 @@ def fft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for all axes (and hence only the
-        last axis can have ``s`` not equal to the shape at that axis).
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1141,11 +1011,11 @@ def fft2(a, s=None, axes=(-2, -1), norm=None, out=None):
               0.  +0.j        ,   0.  +0.j        ]])
 
     """
-    return _raw_fftnd(a, s, axes, fft, norm, out=out)
+    return _raw_fftnd(a, s, axes, fft, norm)
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def ifft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+def ifft2(a, s=None, axes=(-2, -1), norm=None):
     """
     Compute the 2-dimensional inverse discrete Fourier Transform.
 
@@ -1170,37 +1040,14 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         Shape (length of each axis) of the output (``s[0]`` refers to axis 0,
         ``s[1]`` to axis 1, etc.).  This corresponds to `n` for ``ifft(x, n)``.
         Along each axis, if the given shape is smaller than that of the input,
-        the input is cropped. If it is larger, the input is padded with zeros.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        If `s` is not given, the shape of the input along the axes specified
+        the input is cropped.  If it is larger, the input is padded with zeros.
+        if `s` is not given, the shape of the input along the axes specified
         by `axes` is used.  See notes for issue on `ifft` zero padding.
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
         Axes over which to compute the FFT.  If not given, the last two
         axes are used.  A repeated index in `axes` means the transform over
         that axis is performed multiple times.  A one-element sequence means
-        that a one-dimensional FFT is performed. Default: ``(-2, -1)``.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must not be ``None``.
-
+        that a one-dimensional FFT is performed.
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -1211,13 +1058,6 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for all axes (and hence is
-        incompatible with passing in all but the trivial ``s``).
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1264,11 +1104,11 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None, out=None):
            [0.+0.j,  1.+0.j,  0.+0.j,  0.+0.j]])
 
     """
-    return _raw_fftnd(a, s, axes, ifft, norm, out=None)
+    return _raw_fftnd(a, s, axes, ifft, norm)
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def rfftn(a, s=None, axes=None, norm=None, out=None):
+def rfftn(a, s=None, axes=None, norm=None):
     """
     Compute the N-dimensional discrete Fourier Transform for real input.
 
@@ -1288,35 +1128,12 @@ def rfftn(a, s=None, axes=None, norm=None, out=None):
         The final element of `s` corresponds to `n` for ``rfft(x, n)``, while
         for the remaining axes, it corresponds to `n` for ``fft(x, n)``.
         Along any axis, if the given shape is smaller than that of the input,
-        the input is cropped. If it is larger, the input is padded with zeros.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        If `s` is not given, the shape of the input along the axes specified
+        the input is cropped.  If it is larger, the input is padded with zeros.
+        if `s` is not given, the shape of the input along the axes specified
         by `axes` is used.
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
         Axes over which to compute the FFT.  If not given, the last ``len(s)``
         axes are used, or all axes if `s` is also not specified.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must be explicitly specified too.
-
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -1327,13 +1144,6 @@ def rfftn(a, s=None, axes=None, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for all axes (and hence is
-        incompatible with passing in all but the trivial ``s``).
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1389,14 +1199,14 @@ def rfftn(a, s=None, axes=None, norm=None, out=None):
     """
     a = asarray(a)
     s, axes = _cook_nd_args(a, s, axes)
-    a = rfft(a, s[-1], axes[-1], norm, out=out)
+    a = rfft(a, s[-1], axes[-1], norm)
     for ii in range(len(axes)-1):
-        a = fft(a, s[ii], axes[ii], norm, out=out)
+        a = fft(a, s[ii], axes[ii], norm)
     return a
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def rfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+def rfft2(a, s=None, axes=(-2, -1), norm=None):
     """
     Compute the 2-dimensional FFT of a real array.
 
@@ -1406,30 +1216,8 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         Input array, taken to be real.
     s : sequence of ints, optional
         Shape of the FFT.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
-        Axes over which to compute the FFT. Default: ``(-2, -1)``.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must not be ``None``.
-
+        Axes over which to compute the FFT.
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -1440,13 +1228,6 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : complex ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for the last inverse transform.
-        incompatible with passing in all but the trivial ``s``).
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1473,11 +1254,11 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
            [-12.5 -4.0614962j ,   0.  +0.j        ,   0.  +0.j        ],
            [-12.5-17.20477401j,   0.  +0.j        ,   0.  +0.j        ]])
     """
-    return rfftn(a, s, axes, norm, out=out)
+    return rfftn(a, s, axes, norm)
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def irfftn(a, s=None, axes=None, norm=None, out=None):
+def irfftn(a, s=None, axes=None, norm=None):
     """
     Computes the inverse of `rfftn`.
 
@@ -1503,38 +1284,14 @@ def irfftn(a, s=None, axes=None, norm=None, out=None):
         where ``s[-1]//2+1`` points of the input are used.
         Along any axis, if the shape indicated by `s` is smaller than that of
         the input, the input is cropped.  If it is larger, the input is padded
-        with zeros.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        If `s` is not given, the shape of the input along the axes
+        with zeros. If `s` is not given, the shape of the input along the axes
         specified by axes is used. Except for the last axis which is taken to
         be ``2*(m-1)`` where ``m`` is the length of the input along that axis.
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
         Axes over which to compute the inverse FFT. If not given, the last
         `len(s)` axes are used, or all axes if `s` is also not specified.
         Repeated indices in `axes` means that the inverse transform over that
         axis is performed multiple times.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must be explicitly specified too.
-
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -1545,12 +1302,6 @@ def irfftn(a, s=None, axes=None, norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for the last transformation.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1612,12 +1363,12 @@ def irfftn(a, s=None, axes=None, norm=None, out=None):
     s, axes = _cook_nd_args(a, s, axes, invreal=1)
     for ii in range(len(axes)-1):
         a = ifft(a, s[ii], axes[ii], norm)
-    a = irfft(a, s[-1], axes[-1], norm, out=out)
+    a = irfft(a, s[-1], axes[-1], norm)
     return a
 
 
 @array_function_dispatch(_fftn_dispatcher)
-def irfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+def irfft2(a, s=None, axes=(-2, -1), norm=None):
     """
     Computes the inverse of `rfft2`.
 
@@ -1627,31 +1378,9 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         The input array
     s : sequence of ints, optional
         Shape of the real output to the inverse FFT.
-
-        .. versionchanged:: 2.0
-
-            If it is ``-1``, the whole input is used (no padding/trimming).
-
-        .. deprecated:: 2.0
-
-            If `s` is not ``None``, `axes` must not be ``None`` either.
-
-        .. deprecated:: 2.0
-
-            `s` must contain only ``int`` s, not ``None`` values. ``None``
-            values currently mean that the default value for ``n`` is used
-            in the corresponding 1-D transform, but this behaviour is
-            deprecated.
-
     axes : sequence of ints, optional
         The axes over which to compute the inverse fft.
-        Default: ``(-2, -1)``, the last two axes.
-
-        .. deprecated:: 2.0
-
-            If `s` is specified, the corresponding `axes` to be transformed
-            must not be ``None``.
-
+        Default is the last two axes.
     norm : {"backward", "ortho", "forward"}, optional
         .. versionadded:: 1.10.0
 
@@ -1662,12 +1391,6 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
         .. versionadded:: 1.20.0
 
             The "backward", "forward" values were added.
-
-    out : ndarray, optional
-        If provided, the result will be placed in this array. It should be
-        of the appropriate shape and dtype for the last transformation.
-
-        .. versionadded:: 2.0.0
 
     Returns
     -------
@@ -1698,4 +1421,4 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
            [3., 3., 3., 3., 3.],
            [4., 4., 4., 4., 4.]])
     """
-    return irfftn(a, s, axes, norm, out=None)
+    return irfftn(a, s, axes, norm)

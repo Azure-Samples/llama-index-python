@@ -1,11 +1,10 @@
 from functools import reduce
-import pickle
 
 import pytest
 
 import numpy as np
-import numpy._core.umath as umath
-import numpy._core.fromnumeric as fromnumeric
+import numpy.core.umath as umath
+import numpy.core.fromnumeric as fromnumeric
 from numpy.testing import (
     assert_, assert_raises, assert_equal,
     )
@@ -22,6 +21,7 @@ from numpy.ma import (
     repeat, resize, shape, sin, sinh, sometrue, sort, sqrt, subtract, sum,
     take, tan, tanh, transpose, where, zeros,
     )
+from numpy.compat import pickle
 
 pi = np.pi
 
@@ -821,15 +821,13 @@ class TestArrayMethods:
     def test_ptp(self):
         (x, X, XX, m, mx, mX, mXX,) = self.d
         (n, m) = X.shape
-        # print(type(mx), mx.compressed())
-        # raise Exception()
-        assert_equal(mx.ptp(), np.ptp(mx.compressed()))
-        rows = np.zeros(n, np.float64)
-        cols = np.zeros(m, np.float64)
+        assert_equal(mx.ptp(), mx.compressed().ptp())
+        rows = np.zeros(n, np.float_)
+        cols = np.zeros(m, np.float_)
         for k in range(m):
-            cols[k] = np.ptp(mX[:, k].compressed())
+            cols[k] = mX[:, k].compressed().ptp()
         for k in range(n):
-            rows[k] = np.ptp(mX[k].compressed())
+            rows[k] = mX[k].compressed().ptp()
         assert_(eq(mX.ptp(0), cols))
         assert_(eq(mX.ptp(1), rows))
 
