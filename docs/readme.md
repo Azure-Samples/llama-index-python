@@ -14,8 +14,7 @@ products:
 - azure-openai
 - azure-container-apps
 - entra-id
-urlFragment: llama-index-python
-name: "Serverless Azure OpenAI Quick Start with LlamaIndex"
+name: "Serverless Azure OpenAI Quick Start with LlamaIndex (Python)"
 description: A sample project that showcases how to use and deploy LlamaIndex application on Azure using azd.
 ---
 -->
