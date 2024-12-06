@@ -13,7 +13,6 @@ products:
 - azure-cognitive-search
 - azure-container-apps
 - azure
-urlFragment: llama-index-python
 name: Serverless Azure OpenAI Quick Start with LlamaIndex (Python Implementation)
 description: This sample shows how to quickly get started with LlamaIndex on Azure by building a RAG chatbot application. 
 ---
