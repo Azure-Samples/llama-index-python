@@ -43,9 +43,9 @@ This sample shows how to quickly get started with [LlamaIndex.ai](https://www.ll
 [![License](https://img.shields.io/badge/📜%20License-blue?style=flat-square)](LICENSE)
 [![Give us a star](https://img.shields.io/badge/⭐%20Give%20us%20a%20star-blue?style=flat-square)](https://github.com/Azure-Samples/llama-index-python/stargazers)
 
-  <img src="./docs/llama-index-python.png" alt="Screenshot showing the LlamaIndex app in action" width="640px" />
-
 </div>
+
+![Screenshot showing the LlamaIndex app in action](./docs/llama-index-python.png)
 
 ## Features
 
@@ -53,9 +53,7 @@ This project demonstrates how to build a simple LlamaIndex application using Azu
 
 ## Architecture Diagram
 
-<div align="center">
-  <img src="./docs/architecture-diagram-llama-index-python.png" alt="Screenshot showing the chatgpt app high level diagram" width="640px" />
-</div>
+![Screenshot showing the chatgpt app high level diagram](./docs/architecture-diagram-llama-index-python.png)
 
 - This application has two main components:
 
