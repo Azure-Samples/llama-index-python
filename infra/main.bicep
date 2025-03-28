@@ -45,7 +45,7 @@ var llamaIndexConfig = {
   model_provider: 'azure-openai'
   openai_api_key: ''
   llm_temperature: '0.7'
-  llm_max_tokens: '100'
+  llm_max_tokens: '800'
   top_k: '3'
   fileserver_url_prefix: 'http://localhost/api/files'
   system_prompt: 'You are a helpful assistant who helps users with their questions.'
