@@ -13,6 +13,8 @@ poetry shell
 
 Then check the parameters that have been pre-configured in the `.env` file in this directory. (E.g. you might need to configure an `OPENAI_API_KEY` if you're using OpenAI as model provider).
 
+The API rejects every request until `AUTH_MODE` is set. For local development, add `AUTH_MODE=anonymous` to the `.env` file. See the Security section of the [main README](../README.md#security) for how to turn on sign-in for a deployment.
+
 If you are using any tools or data sources, you can update their config files in the `config` folder.
 
 Second, generate the embeddings of the documents in the `./data` directory (if this folder exists - otherwise, skip this step):
@@ -52,7 +54,7 @@ You can start editing the API endpoints by modifying `app/api/routers/chat.py`. 
 
 Open [http://localhost:8000/docs](http://localhost:8000/docs) with your browser to see the Swagger UI of the API.
 
-The API allows CORS for all origins to simplify development. You can change this behavior by setting the `ENVIRONMENT` environment variable to `prod`:
+The API allows CORS for all origins (without credentials) to simplify development. You can change this behavior by setting the `ENVIRONMENT` environment variable to `prod`:
 
 ```
 ENVIRONMENT=prod python main.py
