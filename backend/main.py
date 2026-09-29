@@ -8,6 +8,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from app.api.auth import AuthMiddleware
 from app.api.routers.chat import chat_router
 from app.settings import init_settings
 from app.observability import init_observability
@@ -15,6 +16,10 @@ from fastapi.staticfiles import StaticFiles
 
 
 app = FastAPI()
+
+# Added before CORS so CORS stays the outer layer and can answer preflight
+# requests and add its headers to 401 responses.
+app.add_middleware(AuthMiddleware)
 
 init_settings()
 init_observability()
@@ -39,7 +44,8 @@ if environment == "dev":
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_credentials=True,
+        # Only allow credentials for explicit origins, never for "*".
+        allow_credentials=origins != ["*"],
         allow_methods=["*"],
         allow_headers=["*"],
     )

@@ -110,6 +110,12 @@ You can run this template virtually by using GitHub Codespaces. The button will 
     ```
     Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
 
+    The backend rejects every request until `AUTH_MODE` is set (see [Security](#security)). For local development, allow anonymous access:
+
+    ```bash
+    echo "AUTH_MODE=anonymous" >> .env
+    ```
+
 6. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
 
     ```bash
@@ -189,6 +195,12 @@ A related option is VS Code Dev Containers, which will open the project in your 
     azd env get-values > .env
     ```
     Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
+
+    The backend rejects every request until `AUTH_MODE` is set (see [Security](#security)). For local development, allow anonymous access:
+
+    ```bash
+    echo "AUTH_MODE=anonymous" >> .env
+    ```
 
 7. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
   
@@ -288,6 +300,12 @@ Then you can get the project code:
     ```
     Confirm that this step has happened successfuly by checking if a `.env` file has been added to the `backend` folder. 
 
+    The backend rejects every request until `AUTH_MODE` is set (see [Security](#security)). For local development, allow anonymous access:
+
+    ```bash
+    echo "AUTH_MODE=anonymous" >> .env
+    ```
+
 5. We can now generate the embeddings of the documents in the `./data` directory. In this sample it contains a pdf file with mail standards. 
 
     ```bash
@@ -358,6 +376,32 @@ However, you can use the [Azure pricing calculator](https://azure.com/e/bf51ef20
 > To avoid unnecessary costs, remember to take down your app if it's no longer in use, either by deleting the resource group in the Portal or running `azd down --purge`.
 
 ### Security
+
+#### Authentication
+
+The backend checks every request (`/api/chat`, `/api/chat/request`, `/api/chat/config`, `/api/files/*` and the API docs) before it reads files or calls Azure OpenAI. The `AUTH_MODE` environment variable controls the check:
+
+| `AUTH_MODE` | Behavior |
+| ----------- | -------- |
+| _unset_     | Every request is rejected with `401`. This is what a fresh deployment does until you turn on sign-in. |
+| `easyauth`  | Requires the `X-MS-CLIENT-PRINCIPAL-ID` header that [Azure Container Apps built-in authentication](https://learn.microsoft.com/azure/container-apps/authentication) sets for signed-in users. Only set this when built-in authentication is enabled and requires sign-in. Container Apps strips that header from client requests only when built-in authentication is on. |
+| `anonymous` | No authentication. Don't use this on a public endpoint. It's only for local development or when another gateway authenticates every request. |
+
+`backend/.dockerignore` keeps `.env` files out of the container image, so an `AUTH_MODE=anonymous` line in your local `.env` doesn't reach Azure.
+
+#### Turn on sign-in for your deployment
+
+1. In the Azure portal, open the container app in the `rg-<env-name>` resource group. Its name starts with `ca-llama-index-`.
+2. Go to **Settings > Authentication > Add identity provider**, pick **Microsoft**, and let it create a new app registration. Keep **Require authentication** and **HTTP 302 Found redirect**.
+3. Tell the app to trust the signed-in user headers:
+
+   ```shell
+   az containerapp update --name <container-app-name> --resource-group rg-<env-name> --set-env-vars AUTH_MODE=easyauth
+   ```
+
+`azd provision` and `azd up` reset the container's environment variables, so run step 3 again after either one. The authentication settings from step 2 stay in place.
+
+#### Credentials
 
 > [!NOTE]
 > When implementing this template please specify whether the template uses Managed Identity or Key Vault
